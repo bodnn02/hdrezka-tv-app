@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/hdrezka_search.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/search_provider.dart';
+import '../../shared/widgets/app_shell.dart';
 import 'widgets/search_result_card.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -20,6 +22,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Timer? _debounce;
   String _query = '';
   int _selectedIndex = 0;
+
+  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowUp &&
+        !_fieldFocus.hasFocus) {
+      AppShell.focusTopBar(context);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
 
   @override
   void dispose() {
@@ -42,7 +54,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Stack(
+      body: Focus(
+        onKeyEvent: _handleKey,
+        child: Stack(
         children: [
           // Soft radial glow in background
           Positioned.fill(
@@ -166,7 +180,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
           ),
         ],
-      ),
+        ),  // Stack
+      ),    // Focus
     );
   }
 }
@@ -240,33 +255,27 @@ class _SearchPreview extends StatelessWidget {
           ),
           if (item.rating != null) ...[
             const SizedBox(height: 14),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.glassFill,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.glassBorder),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.glassFill,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.glassBorder),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.star_rounded, color: Color(0xFFFFD60A), size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    item.rating!.toStringAsFixed(1),
+                    style: const TextStyle(
+                      color: Color(0xFFFFD60A),
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.star_rounded, color: Color(0xFFFFD60A), size: 18),
-                      const SizedBox(width: 6),
-                      Text(
-                        item.rating!.toStringAsFixed(1),
-                        style: const TextStyle(
-                          color: Color(0xFFFFD60A),
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                ],
               ),
             ),
           ],

@@ -5,7 +5,6 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   media_kit_video
   open_file_linux
-  volume_controller
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

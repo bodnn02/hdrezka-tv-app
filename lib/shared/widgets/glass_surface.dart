@@ -135,13 +135,7 @@ class GlassButton extends StatelessWidget {
                     ]
                   : null,
             ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(50),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: child,
-        ),
-      ),
+      child: child,
     );
   }
 }
@@ -161,26 +155,20 @@ class GlassChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          decoration: BoxDecoration(
-            color: fillColor ?? AppColors.glassFill,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.glassBorder),
-          ),
-          child: Text(
-            text,
-            style: TextStyle(
-              color: textColor ?? AppColors.onSurface,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.2,
-            ),
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: fillColor ?? const Color(0xAA000000),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.glassBorder),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: textColor ?? AppColors.onSurface,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
         ),
       ),
     );

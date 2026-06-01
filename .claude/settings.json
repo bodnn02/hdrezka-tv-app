@@ -18,7 +18,8 @@
       "Bash(New-Item -ItemType Directory -Force \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\\\\android\\\\app\\\\src\\\\main\\\\res\\\\xml\")",
       "Bash(Out-Null)",
       "Bash(flutter pub *)",
-      "Bash(flutter analyze *)"
+      "Bash(flutter analyze *)",
+      "Bash(flutter --version)"
     ]
   }
 }

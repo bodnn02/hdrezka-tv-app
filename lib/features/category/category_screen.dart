@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/category_provider.dart';
+import '../../shared/widgets/app_shell.dart';
 import '../../shared/widgets/loading_shimmer.dart';
 import '../../shared/widgets/poster_card.dart';
 
@@ -32,12 +33,23 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
   final _scrollController = ScrollController();
   final Map<int, FocusNode> _focusNodes = {};
 
+  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      if (_scrollController.hasClients && _scrollController.offset <= 0) {
+        AppShell.focusTopBar(context);
+        return KeyEventResult.handled;
+      }
+    }
+    return KeyEventResult.ignored;
+  }
+
   String get _currentFilter => _filters[_filterIndex].value;
 
   @override
   void dispose() {
     _scrollController.dispose();
-    for (final node in _focusNodes.values) node.dispose();
+    for (final node in _focusNodes.values) { node.dispose(); }
     super.dispose();
   }
 
@@ -52,7 +64,9 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: FocusTraversalGroup(
+      body: Focus(
+        onKeyEvent: _handleKey,
+        child: FocusTraversalGroup(
         policy: ReadingOrderTraversalPolicy(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,6 +145,7 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

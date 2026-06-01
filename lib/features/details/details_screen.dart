@@ -163,26 +163,20 @@ class _DetailsContent extends ConsumerWidget {
                     FocusableCard(
                       onSelect: () => context.pop(),
                       borderRadius: BorderRadius.circular(50),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(50),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: AppColors.glassFill,
-                              borderRadius: BorderRadius.circular(50),
-                              border: Border.all(color: AppColors.glassBorder),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.arrow_back_rounded, color: AppColors.onSurfaceMuted, size: 16),
-                                SizedBox(width: 6),
-                                Text('Назад', style: TextStyle(color: AppColors.onSurfaceMuted, fontSize: 15)),
-                              ],
-                            ),
-                          ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.glassFill,
+                          borderRadius: BorderRadius.circular(50),
+                          border: Border.all(color: AppColors.glassBorder),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.arrow_back_rounded, color: AppColors.onSurfaceMuted, size: 16),
+                            SizedBox(width: 6),
+                            Text('Назад', style: TextStyle(color: AppColors.onSurfaceMuted, fontSize: 15)),
+                          ],
                         ),
                       ),
                     ),
@@ -388,51 +382,45 @@ class _BookmarkButton extends StatelessWidget {
     return FocusableCard(
       borderRadius: BorderRadius.circular(50),
       onSelect: onToggle,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(50),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(50),
-              gradient: isBookmarked
-                  ? const LinearGradient(
-                      colors: [Color(0x552C7DFF), Color(0x307B5CF0)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : const LinearGradient(
-                      colors: [Color(0x35FFFFFF), Color(0x15FFFFFF)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-              border: Border.all(
-                color: isBookmarked ? AppColors.accent : AppColors.glassBorder,
-                width: 1.5,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(50),
+          gradient: isBookmarked
+              ? const LinearGradient(
+                  colors: [Color(0x552C7DFF), Color(0x307B5CF0)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : const LinearGradient(
+                  colors: [Color(0x35FFFFFF), Color(0x15FFFFFF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+          border: Border.all(
+            color: isBookmarked ? AppColors.accent : AppColors.glassBorder,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+              color: isBookmarked ? AppColors.accent : Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 9),
+            Text(
+              isBookmarked ? 'В закладках' : 'В закладки',
+              style: TextStyle(
+                color: isBookmarked ? AppColors.accent : Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
               ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                  color: isBookmarked ? AppColors.accent : Colors.white,
-                  size: 20,
-                ),
-                const SizedBox(width: 9),
-                Text(
-                  isBookmarked ? 'В закладках' : 'В закладки',
-                  style: TextStyle(
-                    color: isBookmarked ? AppColors.accent : Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          ],
         ),
       ),
     );

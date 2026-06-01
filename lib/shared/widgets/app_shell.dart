@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 
-class AppShell extends StatelessWidget {
+/// Allows child screens to request focus on the top navigation bar.
+/// Call `AppShell.focusTopBar(context)` from any descendant.
+class AppShell extends StatefulWidget {
   final Widget child;
   const AppShell({super.key, required this.child});
 
@@ -15,9 +17,27 @@ class AppShell extends StatelessWidget {
   static const _catRoutes = ['/films', '/series', '/cartoons', '/anime'];
   static const _catLabels = ['Фильмы', 'Сериалы', 'Мультфильмы', 'Аниме'];
 
+  static void focusTopBar(BuildContext context) {
+    final state = context.findAncestorStateOfType<_AppShellState>();
+    state?._topBarScope.requestFocus();
+  }
+
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  final _topBarScope = FocusScopeNode();
+
+  @override
+  void dispose() {
+    _topBarScope.dispose();
+    super.dispose();
+  }
+
   String _selectedRoute(String location) {
     if (location.startsWith('/profile')) return '/profile';
-    for (final r in [..._mainRoutes, ..._catRoutes]) {
+    for (final r in [...AppShell._mainRoutes, ...AppShell._catRoutes]) {
       if (r == '/' ? location == '/' : location.startsWith(r)) return r;
     }
     return '';
@@ -32,16 +52,23 @@ class AppShell extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          Positioned.fill(child: child),
+          Positioned.fill(child: widget.child),
           Positioned(
             top: 0, left: 0, right: 0,
-            child: _GlassTopBar(
-              selectedRoute: selected,
-              mainRoutes: _mainRoutes,
-              mainIcons: _mainIcons,
-              mainLabels: _mainLabels,
-              catRoutes: _catRoutes,
-              catLabels: _catLabels,
+            child: FocusScope(
+              node: _topBarScope,
+              child: _GlassTopBar(
+                selectedRoute: selected,
+                mainRoutes: AppShell._mainRoutes,
+                mainIcons: AppShell._mainIcons,
+                mainLabels: AppShell._mainLabels,
+                catRoutes: AppShell._catRoutes,
+                catLabels: AppShell._catLabels,
+                onEscapeDown: () {
+                  // Return focus to content area
+                  _topBarScope.unfocus();
+                },
+              ),
             ),
           ),
         ],
@@ -59,6 +86,7 @@ class _GlassTopBar extends StatelessWidget {
   final List<String> mainLabels;
   final List<String> catRoutes;
   final List<String> catLabels;
+  final VoidCallback? onEscapeDown;
 
   const _GlassTopBar({
     required this.selectedRoute,
@@ -67,6 +95,7 @@ class _GlassTopBar extends StatelessWidget {
     required this.mainLabels,
     required this.catRoutes,
     required this.catLabels,
+    this.onEscapeDown,
   });
 
   @override
@@ -85,8 +114,16 @@ class _GlassTopBar extends StatelessWidget {
               bottom: BorderSide(color: AppColors.glassBorder, width: 0.5),
             ),
           ),
-          child: SafeArea(
-            bottom: false,
+          child: Focus(
+            skipTraversal: true,
+            onKeyEvent: (_, event) {
+              if (event is KeyDownEvent &&
+                  event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                onEscapeDown?.call();
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
             child: Stack(
               children: [
                 // Top iridescent rim
@@ -148,11 +185,11 @@ class _GlassTopBar extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-          ),
-        ),
-      ),
-    );
+            ),   // Stack
+          ),     // Focus
+        ),       // Container
+      ),         // BackdropFilter
+    );           // ClipRect
   }
 }
 

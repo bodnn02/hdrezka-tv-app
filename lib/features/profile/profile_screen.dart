@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../shared/widgets/app_shell.dart';
 import '../../core/services/bookmarks_service.dart';
 import '../../core/services/watch_history_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -31,7 +32,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Padding(
+      body: Focus(
+        onKeyEvent: (_, event) {
+          if (event is KeyDownEvent &&
+              event.logicalKey == LogicalKeyboardKey.arrowUp) {
+            AppShell.focusTopBar(context);
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Padding(
         padding: const EdgeInsets.only(top: 80),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,7 +121,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ],
         ),
-      ),
+        ),   // Padding
+      ),     // Focus
     );
   }
 }
@@ -126,28 +137,23 @@ class _AccountCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        ClipOval(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              width: 54, height: 54,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: isAuthed
-                    ? const LinearGradient(
-                        colors: [AppColors.accent, AppColors.accentSecondary],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                color: isAuthed ? null : AppColors.glassFillStrong,
-                border: Border.all(color: AppColors.glassBorder),
-              ),
-              child: Icon(
-                isAuthed ? Icons.person_rounded : Icons.person_outline_rounded,
-                color: Colors.white, size: 28,
-              ),
-            ),
+        Container(
+          width: 54, height: 54,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: isAuthed
+                ? const LinearGradient(
+                    colors: [AppColors.accent, AppColors.accentSecondary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: isAuthed ? null : AppColors.glassFillStrong,
+            border: Border.all(color: AppColors.glassBorder),
+          ),
+          child: Icon(
+            isAuthed ? Icons.person_rounded : Icons.person_outline_rounded,
+            color: Colors.white, size: 28,
           ),
         ),
         const SizedBox(width: 14),
@@ -210,77 +216,65 @@ class _GlassTabState extends State<_GlassTab> {
       },
       child: GestureDetector(
         onTap: widget.onSelect,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                gradient: active
-                    ? LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Colors.white.withAlpha(widget.selected ? 45 : 25),
-                          Colors.white.withAlpha(widget.selected ? 18 : 10),
-                        ],
-                      )
-                    : null,
-                border: Border.all(
-                  color: _focused
-                      ? AppColors.glassBorderFocus
-                      : widget.selected
-                          ? AppColors.glassBorder
-                          : Colors.transparent,
-                  width: _focused ? 2 : 1,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: active
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withAlpha(widget.selected ? 45 : 25),
+                      Colors.white.withAlpha(widget.selected ? 18 : 10),
+                    ],
+                  )
+                : null,
+            border: Border.all(
+              color: _focused
+                  ? AppColors.glassBorderFocus
+                  : widget.selected
+                      ? AppColors.glassBorder
+                      : Colors.transparent,
+              width: _focused ? 2 : 1,
+            ),
+            boxShadow: _focused
+                ? const [BoxShadow(color: Color(0x40FFFFFF), blurRadius: 14)]
+                : null,
+          ),
+          child: Row(
+            children: [
+              Icon(widget.icon,
+                  color: active ? AppColors.accent : AppColors.onSurfaceMuted,
+                  size: 19),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  widget.label,
+                  style: TextStyle(
+                    color: active ? Colors.white : AppColors.onSurfaceMuted,
+                    fontSize: 15,
+                    fontWeight: widget.selected ? FontWeight.w600 : FontWeight.w400,
+                  ),
                 ),
-                boxShadow: _focused
-                    ? const [BoxShadow(color: Color(0x40FFFFFF), blurRadius: 14)]
-                    : null,
               ),
-              child: Row(
-                children: [
-                  Icon(widget.icon,
-                      color: active ? AppColors.accent : AppColors.onSurfaceMuted,
-                      size: 19),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      widget.label,
-                      style: TextStyle(
-                        color: active ? Colors.white : AppColors.onSurfaceMuted,
-                        fontSize: 15,
-                        fontWeight: widget.selected ? FontWeight.w600 : FontWeight.w400,
-                      ),
+              if (widget.count > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: widget.selected ? AppColors.accent : AppColors.glassFill,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.glassBorder),
+                  ),
+                  child: Text(
+                    '${widget.count}',
+                    style: const TextStyle(
+                      color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (widget.count > 0)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: widget.selected ? AppColors.accent : AppColors.glassFill,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.glassBorder),
-                          ),
-                          child: Text(
-                            '${widget.count}',
-                            style: const TextStyle(
-                              color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
+                ),
+            ],
           ),
         ),
       ),
@@ -324,32 +318,26 @@ class _GlassActionButtonState extends State<_GlassActionButton> {
       },
       child: GestureDetector(
         onTap: widget.onSelect,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: _focused ? color.withAlpha(35) : Colors.transparent,
-                border: Border.all(
-                  color: _focused ? AppColors.glassBorderFocus : Colors.transparent,
-                  width: _focused ? 2 : 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(widget.icon, color: color, size: 19),
-                  const SizedBox(width: 10),
-                  Text(
-                    widget.label,
-                    style: TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: _focused ? color.withAlpha(35) : Colors.transparent,
+            border: Border.all(
+              color: _focused ? AppColors.glassBorderFocus : Colors.transparent,
+              width: _focused ? 2 : 1,
             ),
+          ),
+          child: Row(
+            children: [
+              Icon(widget.icon, color: color, size: 19),
+              const SizedBox(width: 10),
+              Text(
+                widget.label,
+                style: TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.w500),
+              ),
+            ],
           ),
         ),
       ),
@@ -384,22 +372,16 @@ class _HistoryTab extends ConsumerWidget {
               FocusableCard(
                 borderRadius: BorderRadius.circular(50),
                 onSelect: () => ref.read(watchHistoryProvider.notifier).clear(),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(50),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.glassFill,
-                        borderRadius: BorderRadius.circular(50),
-                        border: Border.all(color: AppColors.glassBorder),
-                      ),
-                      child: const Text(
-                        'Очистить всё',
-                        style: TextStyle(color: AppColors.onSurfaceMuted, fontSize: 13),
-                      ),
-                    ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.glassFill,
+                    borderRadius: BorderRadius.circular(50),
+                    border: Border.all(color: AppColors.glassBorder),
+                  ),
+                  child: const Text(
+                    'Очистить всё',
+                    style: TextStyle(color: AppColors.onSurfaceMuted, fontSize: 13),
                   ),
                 ),
               ),
@@ -437,91 +419,80 @@ class _HistoryItem extends ConsumerWidget {
       child: FocusableCard(
         borderRadius: BorderRadius.circular(14),
         onSelect: () => _open(context),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              height: 80,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0x28FFFFFF), Color(0x0CFFFFFF)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+        child: Container(
+          height: 80,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0x20FFFFFF),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.glassBorder),
+          ),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 107, height: 60,
+                  child: entry.thumbnail.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: entry.thumbnail,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, _, _) => Container(color: AppColors.surfaceVariant),
+                        )
+                      : Container(color: AppColors.surfaceVariant),
                 ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.glassBorder),
               ),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: SizedBox(
-                      width: 107, height: 60,
-                      child: entry.thumbnail.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: entry.thumbnail,
-                              fit: BoxFit.cover,
-                              errorWidget: (_, _, _) => Container(color: AppColors.surfaceVariant),
-                            )
-                          : Container(color: AppColors.surfaceVariant),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      entry.title,
+                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          entry.title,
-                          style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _subtitle(),
-                          style: const TextStyle(color: AppColors.onSurfaceMuted, fontSize: 12),
-                        ),
-                        const SizedBox(height: 6),
-                        // Glass progress bar
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(2),
-                          child: Stack(
-                            children: [
-                              Container(height: 3, color: Colors.white.withAlpha(25)),
-                              FractionallySizedBox(
-                                widthFactor: entry.progress,
-                                child: Container(
-                                  height: 3,
-                                  decoration: const BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [AppColors.accent, AppColors.accentSecondary],
-                                    ),
-                                  ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _subtitle(),
+                      style: const TextStyle(color: AppColors.onSurfaceMuted, fontSize: 12),
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: Stack(
+                        children: [
+                          Container(height: 3, color: Colors.white.withAlpha(25)),
+                          FractionallySizedBox(
+                            widthFactor: entry.progress,
+                            child: Container(
+                              height: 3,
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [AppColors.accent, AppColors.accentSecondary],
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  FocusableCard(
-                    borderRadius: BorderRadius.circular(50),
-                    onSelect: () => ref.read(watchHistoryProvider.notifier)
-                        .remove(entry.url, season: entry.season, episode: entry.episode),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      child: const Icon(Icons.close_rounded, color: AppColors.onSurfaceMuted, size: 16),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(width: 10),
+              FocusableCard(
+                borderRadius: BorderRadius.circular(50),
+                onSelect: () => ref.read(watchHistoryProvider.notifier)
+                    .remove(entry.url, season: entry.season, episode: entry.episode),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  child: const Icon(Icons.close_rounded, color: AppColors.onSurfaceMuted, size: 16),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -568,22 +539,16 @@ class _BookmarksTab extends ConsumerWidget {
               FocusableCard(
                 borderRadius: BorderRadius.circular(50),
                 onSelect: () => ref.read(bookmarksProvider.notifier).clear(),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(50),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.glassFill,
-                        borderRadius: BorderRadius.circular(50),
-                        border: Border.all(color: AppColors.glassBorder),
-                      ),
-                      child: const Text(
-                        'Очистить всё',
-                        style: TextStyle(color: AppColors.onSurfaceMuted, fontSize: 13),
-                      ),
-                    ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.glassFill,
+                    borderRadius: BorderRadius.circular(50),
+                    border: Border.all(color: AppColors.glassBorder),
+                  ),
+                  child: const Text(
+                    'Очистить всё',
+                    style: TextStyle(color: AppColors.onSurfaceMuted, fontSize: 13),
                   ),
                 ),
               ),
@@ -629,29 +594,24 @@ class _BookmarkCard extends ConsumerWidget {
                     errorWidget: (_, _, _) => Container(color: AppColors.surfaceVariant),
                   )
                 : Container(color: AppColors.surfaceVariant),
-            // Glass label
+            // Gradient label
             Positioned(
               bottom: 0, left: 0, right: 0,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(9, 7, 9, 10),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0x00000000), Color(0xCC000000)],
-                      ),
-                    ),
-                    child: Text(
-                      entry.title,
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(9, 22, 9, 10),
+                decoration: const BoxDecoration(
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0x00000000), Color(0xCC000000)],
                   ),
+                ),
+                child: Text(
+                  entry.title,
+                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
@@ -661,15 +621,13 @@ class _BookmarkCard extends ConsumerWidget {
               child: FocusableCard(
                 borderRadius: BorderRadius.circular(50),
                 onSelect: () => ref.read(bookmarksProvider.notifier).remove(entry.url),
-                child: ClipOval(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Container(
-                      padding: const EdgeInsets.all(5),
-                      color: AppColors.glassFillStrong,
-                      child: const Icon(Icons.close_rounded, color: Colors.white, size: 13),
-                    ),
+                child: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: const BoxDecoration(
+                    color: AppColors.glassFillStrong,
+                    shape: BoxShape.circle,
                   ),
+                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 13),
                 ),
               ),
             ),
@@ -733,45 +691,39 @@ class _UpdateButtonState extends ConsumerState<_UpdateButton> {
       },
       child: GestureDetector(
         onTap: isLoading ? null : _checkAndShow,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: _focused ? AppColors.accent.withAlpha(35) : Colors.transparent,
-                border: Border.all(
-                  color: _focused ? AppColors.glassBorderFocus : Colors.transparent,
-                  width: _focused ? 2 : 1,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: _focused ? AppColors.accent.withAlpha(35) : Colors.transparent,
+            border: Border.all(
+              color: _focused ? AppColors.glassBorderFocus : Colors.transparent,
+              width: _focused ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              if (isLoading)
+                const SizedBox(
+                  width: 19, height: 19,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.accent,
+                  ),
+                )
+              else
+                const Icon(Icons.system_update_rounded, color: AppColors.accent, size: 19),
+              const SizedBox(width: 10),
+              Text(
+                isLoading ? 'Проверка…' : 'Обновления',
+                style: const TextStyle(
+                  color: AppColors.accent,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              child: Row(
-                children: [
-                  if (isLoading)
-                    const SizedBox(
-                      width: 19, height: 19,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.accent,
-                      ),
-                    )
-                  else
-                    const Icon(Icons.system_update_rounded, color: AppColors.accent, size: 19),
-                  const SizedBox(width: 10),
-                  Text(
-                    isLoading ? 'Проверка…' : 'Обновления',
-                    style: const TextStyle(
-                      color: AppColors.accent,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            ],
           ),
         ),
       ),
