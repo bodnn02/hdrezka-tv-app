@@ -12,18 +12,22 @@ class LoadingShimmerRow extends StatelessWidget {
     return Shimmer.fromColors(
       baseColor: AppColors.surfaceVariant,
       highlightColor: const Color(0xFF3A3A46),
-      child: Row(
-        children: List.generate(count, (i) => Padding(
-          padding: const EdgeInsets.only(right: 14),
-          child: Container(
-            width: LandscapeCard.cardWidth,
-            height: LandscapeCard.cardHeight,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(14),
+      child: OverflowBox(
+        alignment: Alignment.centerLeft,
+        maxWidth: double.infinity,
+        child: Row(
+          children: List.generate(count, (i) => Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: Container(
+              width: LandscapeCard.cardWidth,
+              height: LandscapeCard.cardHeight,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
-          ),
-        )),
+          )),
+        ),
       ),
     );
   }
@@ -39,7 +43,10 @@ class LoadingShimmerGrid extends StatelessWidget {
     return Shimmer.fromColors(
       baseColor: AppColors.surfaceVariant,
       highlightColor: const Color(0xFF3A3A46),
-      child: Column(
+      child: OverflowBox(
+        alignment: Alignment.topLeft,
+        maxHeight: double.infinity,
+        child: Column(
         children: List.generate(rows, (_) => Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: Row(
@@ -57,6 +64,7 @@ class LoadingShimmerGrid extends StatelessWidget {
             )),
           ),
         )),
+      ),
       ),
     );
   }

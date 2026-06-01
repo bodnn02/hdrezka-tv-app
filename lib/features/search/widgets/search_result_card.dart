@@ -1,9 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/api/hdrezka_search.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../details/content_detail_panel.dart';
 
 class SearchResultCard extends StatefulWidget {
   final FastSearchResult item;
@@ -37,13 +37,13 @@ class _SearchResultCardState extends State<SearchResultCard> {
         if (event is KeyDownEvent &&
             (event.logicalKey == LogicalKeyboardKey.select ||
              event.logicalKey == LogicalKeyboardKey.enter)) {
-          context.push('/details/${Uri.encodeComponent(widget.item.url)}');
+          showContentDetailPanel(context, widget.item.url);
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
       },
       child: GestureDetector(
-        onTap: () => context.push('/details/${Uri.encodeComponent(widget.item.url)}'),
+        onTap: () => showContentDetailPanel(context, widget.item.url),
         child: Padding(
           padding: const EdgeInsets.only(bottom: 6),
           child: ClipRRect(

@@ -170,6 +170,107 @@ class SeasonInfo {
   });
 }
 
+class ActorInfo {
+  final String name;
+  final String? url;
+  final String? photo;
+
+  const ActorInfo({required this.name, this.url, this.photo});
+}
+
+class RelatedRelease {
+  final String title;
+  final String url;
+  final String image;
+
+  const RelatedRelease({required this.title, required this.url, required this.image});
+}
+
+class RatingInfo {
+  final String source;
+  final double value;
+  final int votes;
+
+  const RatingInfo({required this.source, required this.value, required this.votes});
+
+  @override
+  String toString() => '$source: $value (${_formatVotes(votes)})';
+
+  static String _formatVotes(int v) {
+    if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M';
+    if (v >= 1000) return '${(v / 1000).toStringAsFixed(0)}K';
+    return '$v';
+  }
+}
+
+class ContentMeta {
+  final String? slogan;
+  final String? releaseDate;
+  final List<String> countries;
+  final List<String> directors;
+  final List<String> genres;
+  final String? quality;
+  final String? translation;
+  final String? ageRating;
+  final String? duration;
+  final List<String> collections;
+  final List<RatingInfo> ratings;
+  final String? status;
+  final String? origTitle;
+
+  const ContentMeta({
+    this.slogan,
+    this.releaseDate,
+    this.countries = const [],
+    this.directors = const [],
+    this.genres = const [],
+    this.quality,
+    this.translation,
+    this.ageRating,
+    this.duration,
+    this.collections = const [],
+    this.ratings = const [],
+    this.status,
+    this.origTitle,
+  });
+}
+
+class CommentInfo {
+  final int id;
+  final String author;
+  final String? authorPhoto;
+  final String text;
+  final String date;
+  final int likes;
+  final int dislikes;
+
+  const CommentInfo({
+    required this.id,
+    required this.author,
+    this.authorPhoto,
+    required this.text,
+    required this.date,
+    this.likes = 0,
+    this.dislikes = 0,
+  });
+}
+
+class SimilarContent {
+  final String title;
+  final String url;
+  final String? poster;
+  final String? year;
+  final String? rating;
+
+  const SimilarContent({
+    required this.title,
+    required this.url,
+    this.poster,
+    this.year,
+    this.rating,
+  });
+}
+
 class SeriesTranslatorData {
   final String translatorName;
   final bool premium;

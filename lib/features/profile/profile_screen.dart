@@ -10,6 +10,7 @@ import '../../core/services/watch_history_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/auth_state.dart';
+import '../../providers/tmdb_provider.dart';
 import '../../providers/update_provider.dart';
 import '../../shared/widgets/focusable_card.dart';
 import '../../shared/widgets/update_dialog.dart';
@@ -22,7 +23,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  int _tab = 0;
+  int _tab = 0; // 0=history 1=bookmarks 2=settings
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +88,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           selected: _tab == 1,
                           onSelect: () => setState(() => _tab = 1),
                         ),
+                        const SizedBox(height: 8),
+                        _GlassTab(
+                          icon: Icons.settings_rounded,
+                          label: 'Настройки',
+                          count: 0,
+                          selected: _tab == 2,
+                          onSelect: () => setState(() => _tab = 2),
+                        ),
 
                         const Spacer(),
 
@@ -115,9 +124,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
             // ── Content pane ───────────────────────────────────────────
             Expanded(
-              child: _tab == 0
-                  ? _HistoryTab(history: history)
-                  : _BookmarksTab(bookmarks: bookmarks),
+              child: switch (_tab) {
+                0 => _HistoryTab(history: history),
+                1 => _BookmarksTab(bookmarks: bookmarks),
+                _ => const _SettingsTab(),
+              },
             ),
           ],
         ),
@@ -726,6 +737,211 @@ class _UpdateButtonState extends ConsumerState<_UpdateButton> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Settings tab ──────────────────────────────────────────────────────────────
+
+class _SettingsTab extends ConsumerStatefulWidget {
+  const _SettingsTab();
+
+  @override
+  ConsumerState<_SettingsTab> createState() => _SettingsTabState();
+}
+
+class _SettingsTabState extends ConsumerState<_SettingsTab> {
+  late final TextEditingController _tmdbController;
+  bool _saved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tmdbController = TextEditingController(
+      text: ref.read(tmdbApiKeyProvider) ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _tmdbController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveTmdbKey() async {
+    final key = _tmdbController.text.trim();
+    if (key.isEmpty) {
+      await ref.read(tmdbApiKeyProvider.notifier).clear();
+    } else {
+      await ref.read(tmdbApiKeyProvider.notifier).save(key);
+    }
+    setState(() => _saved = true);
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) setState(() => _saved = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(32, 28, 32, 48),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Настройки', style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 28),
+
+          // ── TMDB section ─────────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: AppColors.glassFill,
+              border: Border.all(color: AppColors.glassBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF0D253F), Color(0xFF01B4E4)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: const Icon(Icons.movie_filter_rounded,
+                          color: Colors.white, size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('TMDB API',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600)),
+                        Text('Кадры из фильма (fallback)',
+                            style: TextStyle(
+                                color: AppColors.onSurfaceMuted, fontSize: 12)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Если HDRezka не предоставляет кадры для фильма, '
+                  'приложение загрузит их с The Movie Database. '
+                  'Получите бесплатный ключ на themoviedb.org → Settings → API.',
+                  style: TextStyle(
+                      color: AppColors.onSurfaceMuted,
+                      fontSize: 13,
+                      height: 1.5),
+                ),
+                const SizedBox(height: 16),
+                // Key input field
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: AppColors.surfaceVariant,
+                    border: Border.all(color: AppColors.glassBorder),
+                  ),
+                  child: TextField(
+                    controller: _tmdbController,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    decoration: const InputDecoration(
+                      hintText: 'Bearer токен (начинается с eyJ…)',
+                      hintStyle: TextStyle(
+                          color: AppColors.onSurfaceSubtle, fontSize: 13),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      border: InputBorder.none,
+                    ),
+                    obscureText: true,
+                    onSubmitted: (_) => _saveTmdbKey(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    FocusableCard(
+                      borderRadius: BorderRadius.circular(50),
+                      onSelect: _saveTmdbKey,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 10),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(50),
+                          gradient: _saved
+                              ? const LinearGradient(
+                                  colors: [Color(0xFF34C759), Color(0xFF30D158)],
+                                )
+                              : const LinearGradient(
+                                  colors: [
+                                    AppColors.accent,
+                                    AppColors.accentSecondary
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _saved
+                                  ? Icons.check_rounded
+                                  : Icons.save_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 7),
+                            Text(
+                              _saved ? 'Сохранено' : 'Сохранить',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Clear button — show only if key is set
+                    if ((ref.watch(tmdbApiKeyProvider) ?? '').isNotEmpty)
+                      FocusableCard(
+                        borderRadius: BorderRadius.circular(50),
+                        onSelect: () async {
+                          _tmdbController.clear();
+                          await ref.read(tmdbApiKeyProvider.notifier).clear();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(50),
+                            color: AppColors.glassFill,
+                            border: Border.all(color: AppColors.glassBorder),
+                          ),
+                          child: const Text('Удалить ключ',
+                              style: TextStyle(
+                                  color: AppColors.onSurfaceMuted,
+                                  fontSize: 14)),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

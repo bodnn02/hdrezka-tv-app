@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../../core/api/hdrezka_search.dart';
 import '../../core/theme/app_theme.dart';
+import '../../features/details/content_detail_panel.dart';
 import 'focusable_card.dart';
 
 /// Portrait poster card — used in search results.
@@ -30,7 +30,7 @@ class PosterCard extends StatelessWidget {
       autofocus: autofocus,
       onFocusChange: (f) { if (f) onFocused?.call(); },
       borderRadius: BorderRadius.circular(14),
-      onSelect: () => context.push('/details/${Uri.encodeComponent(item.url)}'),
+      onSelect: () => showContentDetailPanel(context, item.url),
       child: SizedBox(
         width: cardWidth,
         height: cardHeight,
@@ -106,7 +106,7 @@ class LandscapeCard extends StatelessWidget {
       autofocus: autofocus,
       onFocusChange: (f) { if (f) onFocused?.call(); },
       borderRadius: BorderRadius.circular(16),
-      onSelect: () => context.push('/details/${Uri.encodeComponent(item.url)}'),
+      onSelect: () => showContentDetailPanel(context, item.url),
       child: SizedBox(
         width: cardWidth,
         height: cardHeight,

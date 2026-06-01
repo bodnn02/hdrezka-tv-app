@@ -32,6 +32,13 @@ class HdRezkaApi {
   Map<int, SeriesTranslatorData>? _seriesInfoCache;
   List<SeasonInfo>? _episodesInfoCache;
   List<Map<String, String>>? _otherPartsCache;
+  List<ActorInfo>? _actorsCache;
+  List<String>? _tagsCache;
+  List<String>? _framesCache;
+  List<RelatedRelease>? _relatedReleasesCache;
+  ContentMeta? _metaCache;
+  List<CommentInfo>? _commentsCache;
+  List<SimilarContent>? _similarCache;
 
   HdRezkaApi(
     String rawUrl, {
@@ -380,6 +387,246 @@ class HdRezkaApi {
     }
     _otherPartsCache = other;
     return other;
+  }
+
+  Future<List<ActorInfo>> get actors async {
+    if (_actorsCache != null) return _actorsCache!;
+    final s = await soup;
+    final result = <ActorInfo>[];
+    for (final el in s.querySelectorAll('.b-post__info .persons-list-holder .b-persons__actor')) {
+      final name = el.querySelector('.b-persons__actor_name')?.text.trim() ?? '';
+      if (name.isEmpty) continue;
+      final link = el.querySelector('a');
+      final photo = el.querySelector('img')?.attributes['src'];
+      result.add(ActorInfo(name: name, url: link?.attributes['href'], photo: photo));
+    }
+    _actorsCache = result;
+    return result;
+  }
+
+  Future<List<String>> get tags async {
+    if (_tagsCache != null) return _tagsCache!;
+    final s = await soup;
+    final result = <String>[];
+    for (final el in s.querySelectorAll('.b-post__info .b-post__tags a')) {
+      final text = el.text.trim();
+      if (text.isNotEmpty) result.add(text);
+    }
+    _tagsCache = result;
+    return result;
+  }
+
+  Future<List<String>> get frames async {
+    if (_framesCache != null) return _framesCache!;
+    final s = await soup;
+    final result = <String>[];
+    for (final el in s.querySelectorAll('.b-post__images a')) {
+      final href = el.attributes['href'] ?? '';
+      if (href.isNotEmpty) result.add(href);
+    }
+    _framesCache = result;
+    return result;
+  }
+
+  Future<ContentMeta> get meta async {
+    if (_metaCache != null) return _metaCache!;
+    final s = await soup;
+    final table = s.querySelector('.b-post__info');
+
+    String? slogan;
+    String? releaseDate;
+    final countries = <String>[];
+    final directors = <String>[];
+    final genres = <String>[];
+    String? quality;
+    String? translation;
+    String? ageRating;
+    String? duration;
+    final collections = <String>[];
+    final ratings = <RatingInfo>[];
+    String? status;
+    String? origTitle;
+
+    // original title from dedicated element
+    origTitle = s.querySelector('.b-post__origtitle')?.text.trim();
+
+    // status badge (e.g. "Завершен (все серии)")
+    status = s.querySelector('.b-post__info_rates .b-post__episodesbadge')?.text.trim();
+    status ??= s.querySelector('.b-post__episodesbadge')?.text.trim();
+
+    if (table != null) {
+      for (final tr in table.querySelectorAll('tr')) {
+        final cells = tr.querySelectorAll('td');
+        if (cells.length < 2) continue;
+        final label = cells[0].text.toLowerCase();
+        final valueCell = cells[1];
+
+        if (label.contains('слоган')) {
+          slogan = valueCell.text.trim().replaceAll(RegExp(r'^«|»$'), '').trim();
+        } else if (label.contains('дата выхода') || label.contains('год')) {
+          releaseDate = valueCell.text.trim();
+        } else if (label.contains('страна')) {
+          for (final a in valueCell.querySelectorAll('a')) {
+            final t = a.text.trim();
+            if (t.isNotEmpty) countries.add(t);
+          }
+        } else if (label.contains('режиссер') || label.contains('режиссёр')) {
+          for (final a in valueCell.querySelectorAll('a')) {
+            final t = a.text.trim();
+            if (t.isNotEmpty) directors.add(t);
+          }
+          if (directors.isEmpty) {
+            final t = valueCell.text.trim();
+            if (t.isNotEmpty) directors.add(t);
+          }
+        } else if (label.contains('жанр')) {
+          for (final a in valueCell.querySelectorAll('a')) {
+            final t = a.text.trim();
+            if (t.isNotEmpty) genres.add(t);
+          }
+        } else if (label.contains('качеств')) {
+          quality = valueCell.text.trim();
+        } else if (label.contains('перевод')) {
+          translation = valueCell.text.trim();
+        } else if (label.contains('возраст')) {
+          ageRating = valueCell.text.trim();
+        } else if (label.contains('время') || label.contains('длительность')) {
+          duration = valueCell.text.trim();
+        } else if (label.contains('из серии') || label.contains('серии')) {
+          for (final a in valueCell.querySelectorAll('a')) {
+            final t = a.text.trim();
+            if (t.isNotEmpty) collections.add(t);
+          }
+        }
+      }
+    }
+
+    // Ratings block (IMDb, КиноПоиск etc.)
+    for (final ratingEl in s.querySelectorAll('.b-post__info_rates .b-post__info_rates_item')) {
+      final sourceEl = ratingEl.querySelector('.source');
+      final numEl = ratingEl.querySelector('.num');
+      final votesEl = ratingEl.querySelector('.votes');
+      if (sourceEl == null || numEl == null) continue;
+      final src = sourceEl.text.trim();
+      final val = double.tryParse(numEl.text.trim()) ?? 0;
+      final votesStr = votesEl?.text.trim().replaceAll(RegExp(r'[^\d]'), '') ?? '0';
+      final votes = int.tryParse(votesStr) ?? 0;
+      ratings.add(RatingInfo(source: src, value: val, votes: votes));
+    }
+
+    _metaCache = ContentMeta(
+      slogan: slogan?.isEmpty == true ? null : slogan,
+      releaseDate: releaseDate,
+      countries: countries,
+      directors: directors,
+      genres: genres,
+      quality: quality,
+      translation: translation,
+      ageRating: ageRating,
+      duration: duration,
+      collections: collections,
+      ratings: ratings,
+      status: status,
+      origTitle: origTitle?.isEmpty == true ? null : origTitle,
+    );
+    return _metaCache!;
+  }
+
+  Future<bool> voteRating(bool isLike) async {
+    final contentId = await id;
+    final response = await _post('$origin/ajax/add_vote/', {
+      'news_id': contentId.toString(),
+      'vote': isLike ? '1' : '0',
+    });
+    try {
+      final decoded = json.decode(utf8.decode(response.bodyBytes));
+      final data = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+      return data['success'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<List<CommentInfo>> get comments async {
+    if (_commentsCache != null) return _commentsCache!;
+    final contentId = await id;
+    final response = await _post('$origin/ajax/get_comments/', {
+      'news_id': contentId.toString(),
+      'cstart': '1',
+      'type': '0',
+      'comment_id': '0',
+      'skin': 'hdrezka',
+    });
+    final decoded = json.decode(utf8.decode(response.bodyBytes));
+    final data = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    final result = <CommentInfo>[];
+    if (data['success'] == true) {
+      final html = data['comments']?.toString() ?? '';
+      if (html.isNotEmpty) {
+        final doc = html_parser.parse(html);
+        for (final el in doc.querySelectorAll('.b-comment__item')) {
+          final idStr = el.attributes['data-id'] ?? el.attributes['id']?.replaceAll(RegExp(r'\D'), '');
+          final commentId = int.tryParse(idStr ?? '') ?? 0;
+          final author = el.querySelector('.b-comment__author_name')?.text.trim() ?? '';
+          final photo = el.querySelector('.b-comment__author_userpic img')?.attributes['src'];
+          final textEl = el.querySelector('.b-comment__text');
+          final text = textEl?.text.trim() ?? '';
+          final date = el.querySelector('.b-comment__date')?.text.trim() ?? '';
+          final likesStr = el.querySelector('.b-comment__like_counter')?.text.trim() ?? '0';
+          final dislikesStr = el.querySelector('.b-comment__dislike_counter')?.text.trim() ?? '0';
+          if (author.isEmpty && text.isEmpty) continue;
+          result.add(CommentInfo(
+            id: commentId,
+            author: author,
+            authorPhoto: photo,
+            text: text,
+            date: date,
+            likes: int.tryParse(likesStr) ?? 0,
+            dislikes: int.tryParse(dislikesStr) ?? 0,
+          ));
+        }
+      }
+    }
+    _commentsCache = result;
+    return result;
+  }
+
+  Future<List<SimilarContent>> get similar async {
+    if (_similarCache != null) return _similarCache!;
+    final s = await soup;
+    final result = <SimilarContent>[];
+    for (final el in s.querySelectorAll('.b-sidelist__item, .b-post__recommended .b-content__inline_item')) {
+      final a = el.querySelector('a') ?? el.querySelector('.b-content__inline_item-link a');
+      final img = el.querySelector('img');
+      final title = el.querySelector('.b-content__inline_item-link a')?.text.trim()
+          ?? el.querySelector('.title')?.text.trim()
+          ?? a?.text.trim()
+          ?? '';
+      final href = a?.attributes['href'] ?? '';
+      final poster = img?.attributes['src'];
+      final year = el.querySelector('.b-content__inline_item-meta')?.text.trim();
+      if (title.isEmpty || href.isEmpty) continue;
+      result.add(SimilarContent(title: title, url: href, poster: poster, year: year));
+    }
+    _similarCache = result;
+    return result;
+  }
+
+  Future<List<RelatedRelease>> get relatedReleases async {
+    if (_relatedReleasesCache != null) return _relatedReleasesCache!;
+    final s = await soup;
+    final result = <RelatedRelease>[];
+    for (final el in s.querySelectorAll('.b-post__partcontent .b-post__partcontent_item')) {
+      final link = el.querySelector('a') ?? el.querySelector('.title');
+      final img = el.querySelector('img');
+      final title = el.querySelector('.title')?.text.trim() ?? '';
+      final href = el.attributes['data-url'] ?? link?.attributes['href'] ?? '';
+      final image = img?.attributes['src'] ?? '';
+      if (title.isEmpty) continue;
+      result.add(RelatedRelease(title: title, url: href, image: image));
+    }
+    _relatedReleasesCache = result;
+    return result;
   }
 
   // ---------------------------------------------------------------------------

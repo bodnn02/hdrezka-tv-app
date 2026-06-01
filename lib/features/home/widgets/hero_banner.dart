@@ -1,17 +1,18 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/api/hdrezka_search.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../providers/category_provider.dart';
+import '../../../providers/content_provider.dart';
 import '../../../shared/widgets/focusable_card.dart';
 import '../../../shared/widgets/glass_surface.dart';
+import '../../details/content_detail_panel.dart';
 
 class HeroBanner extends ConsumerWidget {
   const HeroBanner({super.key});
 
-  static const double _height = 560.0;
+  static const double _height = 580.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -31,28 +32,43 @@ class HeroBanner extends ConsumerWidget {
   }
 }
 
-class _HeroBannerContent extends StatelessWidget {
+class _HeroBannerContent extends ConsumerWidget {
   final AdvancedSearchResult item;
   const _HeroBannerContent({required this.item});
 
+  void _showDetailPanel(BuildContext context) {
+    showContentDetailPanel(context, item.url);
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final thumbHqAsync = ref.watch(thumbnailHqProvider(item.url));
+    final descAsync    = ref.watch(descriptionProvider(item.url));
+    final tagsAsync    = ref.watch(tagsProvider(item.url));
+    final actorsAsync  = ref.watch(actorsProvider(item.url));
+
+    // Best available background: HQ thumbnail, fall back to poster image
+    final hqThumb = thumbHqAsync.valueOrNull;
+    final bgUrl   = (hqThumb != null && hqThumb.isNotEmpty) ? hqThumb : item.image;
+
     return SizedBox(
       height: HeroBanner._height,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Full-bleed background — slightly desaturated for glass depth
+          // Full-bleed background — high quality, subtle desaturation
           ColorFiltered(
             colorFilter: const ColorFilter.matrix([
-              0.85, 0.05, 0.05, 0, 0,
-              0.05, 0.85, 0.05, 0, 0,
-              0.05, 0.05, 0.90, 0, 0,
+              0.88, 0.04, 0.04, 0, 0,
+              0.04, 0.88, 0.04, 0, 0,
+              0.04, 0.04, 0.92, 0, 0,
               0,    0,    0,    1, 0,
             ]),
             child: CachedNetworkImage(
-              imageUrl: item.image,
+              imageUrl: bgUrl,
               fit: BoxFit.cover,
+              memCacheWidth: 1920,
+              filterQuality: FilterQuality.high,
               errorWidget: (_, _, _) => Container(color: AppColors.surfaceVariant),
             ),
           ),
@@ -77,8 +93,8 @@ class _HeroBannerContent extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
-                  colors: [Color(0xEA060608), Color(0x55060608), Colors.transparent],
-                  stops: [0.0, 0.42, 0.72],
+                  colors: [Color(0xF0060608), Color(0x66060608), Colors.transparent],
+                  stops: [0.0, 0.45, 0.75],
                 ),
               ),
             ),
@@ -88,7 +104,7 @@ class _HeroBannerContent extends StatelessWidget {
           Positioned(
             bottom: 0, left: 0, right: 0,
             child: Container(
-              height: 180,
+              height: 200,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
@@ -116,7 +132,7 @@ class _HeroBannerContent extends StatelessWidget {
 
           // Content: left-aligned text + glass buttons
           Positioned(
-            left: 64, bottom: 80, right: 260,
+            left: 64, bottom: 72, right: 240,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -124,7 +140,7 @@ class _HeroBannerContent extends StatelessWidget {
                 // Glass category pill
                 if (item.category != null)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.only(bottom: 14),
                     child: GlassChip(
                       text: item.category!.name.toUpperCase(),
                       textColor: Colors.white,
@@ -147,16 +163,103 @@ class _HeroBannerContent extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
+
+                // Tags row
+                tagsAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
+                  data: (tags) {
+                    if (tags.isEmpty) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: tags.take(5).map((t) => GlassChip(
+                          text: t,
+                          textColor: AppColors.onSurfaceMuted,
+                          fillColor: const Color(0x55000000),
+                        )).toList(),
+                      ),
+                    );
+                  },
+                ),
+
+                // Description
+                descAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
+                  data: (desc) {
+                    if (desc.isEmpty) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: Text(
+                        desc,
+                        style: const TextStyle(
+                          color: Color(0xCCEEEEF4),
+                          fontSize: 15,
+                          height: 1.5,
+                          shadows: [
+                            Shadow(color: Color(0x80000000), blurRadius: 12),
+                          ],
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  },
+                ),
+
+                // Actors row
+                actorsAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
+                  data: (actors) {
+                    if (actors.isEmpty) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: Row(
+                        children: [
+                          const Text(
+                            'В ролях: ',
+                            style: TextStyle(
+                              color: AppColors.onSurfaceMuted,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Flexible(
+                            child: Text(
+                              actors.take(4).map((a) => a.name).join(', '),
+                              style: const TextStyle(
+                                color: Color(0xBBEEEEF4),
+                                fontSize: 13,
+                                shadows: [
+                                  Shadow(color: Color(0x80000000), blurRadius: 8),
+                                ],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
 
                 // Glass pill buttons
                 Row(
                   children: [
-                    // Primary: white glass pill
+                    // Primary: watch
                     FocusableCard(
                       autofocus: true,
                       borderRadius: BorderRadius.circular(50),
-                      onSelect: () => context.push('/details/${Uri.encodeComponent(item.url)}'),
+                      onSelect: () {
+                        // Navigate straight to details for translator/episode selection
+                        _showDetailPanel(context);
+                      },
                       child: _GlassPrimaryButton(
                         icon: Icons.play_arrow_rounded,
                         label: 'Смотреть',
@@ -164,10 +267,10 @@ class _HeroBannerContent extends StatelessWidget {
                     ),
                     const SizedBox(width: 14),
 
-                    // Secondary: frosted glass pill
+                    // Secondary: detail panel
                     FocusableCard(
                       borderRadius: BorderRadius.circular(50),
-                      onSelect: () => context.push('/details/${Uri.encodeComponent(item.url)}'),
+                      onSelect: () => _showDetailPanel(context),
                       child: _GlassSecondaryButton(
                         icon: Icons.info_outline_rounded,
                         label: 'Подробнее',
