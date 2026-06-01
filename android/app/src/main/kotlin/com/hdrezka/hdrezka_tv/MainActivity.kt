@@ -1,0 +1,5 @@
+package com.hdrezka.hdrezka_tv
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()

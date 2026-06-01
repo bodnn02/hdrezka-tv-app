@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Path \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\" -Recurse -Force | Select-Object FullName, @{Name=\"Type\";Expression={if\\($_.PSIsContainer\\){\"DIR\"}else{\"FILE\"}}} | Format-Table -AutoSize)",
+      "Bash(flutter create *)",
+      "PowerShell(flutter create --org com.hdrezka --project-name hdrezka_tv --platforms android d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\\\\hdrezka_tv 2>&1)",
+      "PowerShell(& \"C:\\\\Users\\\\bodnn\\\\flutter\\\\bin\\\\flutter.bat\" create --org com.hdrezka --project-name hdrezka_tv --platforms android \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\\\\hdrezka_tv\" 2>&1)",
+      "Bash(dart analyze *)",
+      "Bash(ls \"C:\\\\Users\\\\bodnn\\\\.claude\\\\projects\\\\d--Programs-OSPanel-domains-hdrezka-tv-app\\\\memory\\\\\")",
+      "Read(//c/Users/bodnn/.claude/projects/d--Programs-OSPanel-domains-hdrezka-tv-app/**)",
+      "PowerShell(New-Item -ItemType Directory -Force \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\\\\assets\\\\images\")",
+      "PowerShell(Copy-Item \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\\\\hdrezka-logo.png\" \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\\\\assets\\\\images\\\\hdrezka-logo.png\")",
+      "PowerShell(Copy-Item \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\\\\favicon-32x32.png\" \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\\\\assets\\\\images\\\\favicon-32x32.png\")",
+      "Bash(Get-ChildItem -Path \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\" -Directory)"
+    ]
+  }
+}
