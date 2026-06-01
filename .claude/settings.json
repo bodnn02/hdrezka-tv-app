@@ -19,7 +19,8 @@
       "Bash(Out-Null)",
       "Bash(flutter pub *)",
       "Bash(flutter analyze *)",
-      "Bash(flutter --version)"
+      "Bash(flutter --version)",
+      "Bash(grep -v \"^$\")"
     ]
   }
 }

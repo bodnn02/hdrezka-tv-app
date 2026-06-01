@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 import 'hdrezka_errors.dart';
 import 'hdrezka_search.dart';
 import 'hdrezka_session.dart';
-import 'hdrezka_types.dart';
 
 class CollectionResult {
   final String title;
@@ -20,20 +19,171 @@ class CollectionResult {
   });
 }
 
+// Genre slug → display label per category
+const Map<String, Map<String, String>> categoryGenres = {
+  'films': {
+    'abonement': 'Абонемент',
+    'boevik': 'Боевик',
+    'vestern': 'Вестерн',
+    'voennyi': 'Военный',
+    'detektiv': 'Детектив',
+    'detskii': 'Детский',
+    'dokumentalnyi': 'Документальный',
+    'drama': 'Драма',
+    'istoricheskii': 'Исторический',
+    'komediya': 'Комедия',
+    'kriminal': 'Криминал',
+    'melodrama': 'Мелодрама',
+    'mistika': 'Мистика',
+    'muzei': 'Мюзикл',
+    'priklyucheniya': 'Приключения',
+    'semeinyi': 'Семейный',
+    'sport': 'Спорт',
+    'triller': 'Триллер',
+    'uzhasy': 'Ужасы',
+    'fantastika': 'Фантастика',
+    'fentezi': 'Фэнтези',
+    'erotika': 'Эротика',
+  },
+  'series': {
+    'abonement': 'Абонемент',
+    'boevik': 'Боевик',
+    'vestern': 'Вестерн',
+    'voennyi': 'Военный',
+    'detektiv': 'Детектив',
+    'detskii': 'Детский',
+    'dokumentalnyi': 'Документальный',
+    'drama': 'Драма',
+    'istoricheskii': 'Исторический',
+    'komediya': 'Комедия',
+    'kriminal': 'Криминал',
+    'melodrama': 'Мелодрама',
+    'mistika': 'Мистика',
+    'muzei': 'Мюзикл',
+    'priklyucheniya': 'Приключения',
+    'semeinyi': 'Семейный',
+    'sport': 'Спорт',
+    'triller': 'Триллер',
+    'uzhasy': 'Ужасы',
+    'fantastika': 'Фантастика',
+    'fentezi': 'Фэнтези',
+  },
+  'cartoons': {
+    'abonement': 'Абонемент',
+    'boevik': 'Боевик',
+    'vestern': 'Вестерн',
+    'voennyi': 'Военный',
+    'detektiv': 'Детектив',
+    'detskii': 'Детский',
+    'dokumentalnyi': 'Документальный',
+    'drama': 'Драма',
+    'istoricheskii': 'Исторический',
+    'komediya': 'Комедия',
+    'kriminal': 'Криминал',
+    'melodrama': 'Мелодрама',
+    'mistika': 'Мистика',
+    'muzei': 'Мюзикл',
+    'priklyucheniya': 'Приключения',
+    'semeinyi': 'Семейный',
+    'sport': 'Спорт',
+    'triller': 'Триллер',
+    'uzhasy': 'Ужасы',
+    'fantastika': 'Фантастика',
+    'fentezi': 'Фэнтези',
+  },
+  'animation': {
+    'boevik': 'Боевик',
+    'detektiv': 'Детектив',
+    'drama': 'Драма',
+    'istoricheskii': 'Исторический',
+    'komediya': 'Комедия',
+    'melodrama': 'Мелодрама',
+    'mistika': 'Мистика',
+    'priklyucheniya': 'Приключения',
+    'triller': 'Триллер',
+    'uzhasy': 'Ужасы',
+    'fantastika': 'Фантастика',
+    'fentezi': 'Фэнтези',
+  },
+};
+
+class BrowseParams {
+  final String category;
+  final int page;
+  final String filter;
+  final String? genre;
+  final int? year;
+
+  const BrowseParams({
+    required this.category,
+    this.page = 1,
+    this.filter = 'watching',
+    this.genre,
+    this.year,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      other is BrowseParams &&
+      category == other.category &&
+      page == other.page &&
+      filter == other.filter &&
+      genre == other.genre &&
+      year == other.year;
+
+  @override
+  int get hashCode => Object.hash(category, page, filter, genre, year);
+}
+
 class HdRezkaBrowse {
+  /// Builds the request URI for a browse page.
+  /// HDrezka URL patterns:
+  ///   /films/?filter=watching&page=2         — plain browse
+  ///   /films/genre/boevik/?filter=...&page=2 — genre filter
+  ///   /films/year/2024/?filter=...&page=2    — year filter
+  static Uri _buildUri(String origin, BrowseParams p) {
+    String path;
+    if (p.genre != null && p.genre!.isNotEmpty) {
+      path = '/${ p.category}/genre/${p.genre}/';
+    } else if (p.year != null) {
+      path = '/${p.category}/year/${p.year}/';
+    } else {
+      path = '/${p.category}/';
+    }
+    return Uri.parse('$origin$path').replace(queryParameters: {
+      'filter': p.filter,
+      'page': p.page.toString(),
+    });
+  }
+
   static Future<List<AdvancedSearchResult>> getCategory(
     HdRezkaSession session,
     String categoryPath, {
     int page = 1,
     String filter = 'watching',
+    String? genre,
+    int? year,
   }) async {
+    return getCategoryParams(
+      session,
+      BrowseParams(
+        category: categoryPath,
+        page: page,
+        filter: filter,
+        genre: genre,
+        year: year,
+      ),
+    );
+  }
+
+  static Future<List<AdvancedSearchResult>> getCategoryParams(
+    HdRezkaSession session,
+    BrowseParams params,
+  ) async {
     final origin = session.origin;
     if (origin == null) throw StateError('Session origin is required for browsing');
 
-    final uri = Uri.parse('$origin/$categoryPath/').replace(queryParameters: {
-      'filter': filter,
-      'page': page.toString(),
-    });
+    final uri = _buildUri(origin, params);
 
     final cookieHeader = session.cookies.entries
         .map((e) => '${e.key}=${e.value}')
@@ -110,7 +260,6 @@ class HdRezkaBrowse {
 
     final collections = <CollectionResult>[];
 
-    // Collections are in .b-content__collections_list .b-content__collections_item
     for (final item in document.querySelectorAll('.b-content__collections_item')) {
       final linkEl  = item.querySelector('a');
       final imgEl   = item.querySelector('img');

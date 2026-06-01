@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api/hdrezka_api.dart';
@@ -90,7 +91,10 @@ class _DetailsContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final thumbAsync        = ref.watch(FutureProvider((r) => api.thumbnailHQ).future);
     final translatorsAsync  = ref.watch(translatorsProvider(contentUrl));
-    final episodesAsync     = ref.watch(episodesInfoProvider(contentUrl));
+    // Load episodes only for the selected translator; fall back to the default first translator
+    final episodesAsync = selectedTranslatorId != null
+        ? ref.watch(episodesForTranslatorProvider((url: contentUrl, translatorId: selectedTranslatorId!)))
+        : ref.watch(episodesInfoProvider(contentUrl));
     final metaAsync         = ref.watch(metaProvider(contentUrl));
     final actorsAsync       = ref.watch(actorsProvider(contentUrl));
     final framesAsync       = ref.watch(framesWithFallbackProvider(contentUrl));
@@ -827,29 +831,426 @@ class _ActorsRow extends StatelessWidget {
 
 // ── Frames ─────────────────────────────────────────────────────────────────────
 
-class _FramesRow extends StatelessWidget {
+class _FramesRow extends StatefulWidget {
   final List<String> frames;
   const _FramesRow({required this.frames});
 
   @override
+  State<_FramesRow> createState() => _FramesRowState();
+}
+
+class _FramesRowState extends State<_FramesRow> {
+  final _scrollController = ScrollController();
+  final List<FocusNode> _focusNodes = [];
+
+  @override
+  void initState() {
+    super.initState();
+    for (var i = 0; i < widget.frames.length; i++) {
+      _focusNodes.add(FocusNode());
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final n in _focusNodes) {
+      n.dispose();
+    }
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _openGallery(int initialIndex) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.transparent,
+      pageBuilder: (_, _, _) => _FramesGallery(
+        frames: widget.frames,
+        initialIndex: initialIndex,
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 110,
+      height: 120,
       child: ListView.separated(
+        controller: _scrollController,
         scrollDirection: Axis.horizontal,
-        itemCount: frames.length,
+        itemCount: widget.frames.length,
         separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (_, i) => ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: CachedNetworkImage(
-            imageUrl: frames[i],
-            width: 196,
-            height: 110,
-            fit: BoxFit.cover,
-            errorWidget: (_, _, _) =>
-                Container(width: 196, height: 110, color: AppColors.surfaceVariant),
+        itemBuilder: (_, i) {
+          return FocusableCard(
+            focusNode: _focusNodes[i],
+            borderRadius: BorderRadius.circular(10),
+            onSelect: () => _openGallery(i),
+            onFocusChange: (focused) {
+              if (focused) {
+                final offset = i * 206.0;
+                _scrollController.animateTo(
+                  offset.clamp(0.0, _scrollController.position.maxScrollExtent),
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
+                );
+              }
+            },
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: CachedNetworkImage(
+                    imageUrl: widget.frames[i],
+                    width: 196,
+                    height: 110,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, _, _) => Container(
+                      width: 196,
+                      height: 110,
+                      color: AppColors.surfaceVariant,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 6,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${i + 1} / ${widget.frames.length}',
+                      style: const TextStyle(color: Colors.white70, fontSize: 10),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ── Frames Gallery Overlay ──────────────────────────────────────────────────────
+
+class _FramesGallery extends StatefulWidget {
+  final List<String> frames;
+  final int initialIndex;
+  const _FramesGallery({required this.frames, required this.initialIndex});
+
+  @override
+  State<_FramesGallery> createState() => _FramesGalleryState();
+}
+
+class _FramesGalleryState extends State<_FramesGallery>
+    with SingleTickerProviderStateMixin {
+  late final PageController _pageController;
+  late final AnimationController _fadeController;
+  late int _currentIndex;
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    )..forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focusNode.requestFocus());
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _fadeController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _close() {
+    _fadeController.reverse().then((_) {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  void _goTo(int index) {
+    if (index < 0 || index >= widget.frames.length) return;
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  KeyEventResult _handleKey(FocusNode _, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.mediaRewind) {
+      _goTo(_currentIndex - 1);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowRight || key == LogicalKeyboardKey.mediaFastForward) {
+      _goTo(_currentIndex + 1);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.escape ||
+        key == LogicalKeyboardKey.goBack ||
+        key == LogicalKeyboardKey.browserBack) {
+      _close();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeController,
+      child: Focus(
+        focusNode: _focusNode,
+        autofocus: true,
+        onKeyEvent: _handleKey,
+        child: Scaffold(
+          backgroundColor: Colors.black.withValues(alpha: 0.95),
+          body: Stack(
+            children: [
+              // ── Main image PageView ──
+              PageView.builder(
+                controller: _pageController,
+                itemCount: widget.frames.length,
+                onPageChanged: (i) => setState(() => _currentIndex = i),
+                itemBuilder: (_, i) => InteractiveViewer(
+                  minScale: 0.8,
+                  maxScale: 4.0,
+                  child: Center(
+                    child: CachedNetworkImage(
+                      imageUrl: widget.frames[i],
+                      fit: BoxFit.contain,
+                      placeholder: (_, _) => const Center(
+                        child: CircularProgressIndicator(color: Colors.white38),
+                      ),
+                      errorWidget: (_, _, _) => const Icon(
+                        Icons.broken_image_outlined,
+                        color: Colors.white38,
+                        size: 64,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // ── Top bar ──
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.black87, Colors.transparent],
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Кадры из фильма',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${_currentIndex + 1} / ${widget.frames.length}',
+                        style: const TextStyle(color: Colors.white70, fontSize: 16),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── Left arrow ──
+              if (_currentIndex > 0)
+                Positioned(
+                  left: 16,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: _ArrowButton(
+                      icon: Icons.chevron_left_rounded,
+                      onTap: () => _goTo(_currentIndex - 1),
+                    ),
+                  ),
+                ),
+
+              // ── Right arrow ──
+              if (_currentIndex < widget.frames.length - 1)
+                Positioned(
+                  right: 16,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: _ArrowButton(
+                      icon: Icons.chevron_right_rounded,
+                      onTap: () => _goTo(_currentIndex + 1),
+                    ),
+                  ),
+                ),
+
+              // ── Bottom thumbnail strip ──
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: _ThumbnailStrip(
+                  frames: widget.frames,
+                  currentIndex: _currentIndex,
+                  onTap: _goTo,
+                ),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ArrowButton extends StatefulWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _ArrowButton({required this.icon, required this.onTap});
+
+  @override
+  State<_ArrowButton> createState() => _ArrowButtonState();
+}
+
+class _ArrowButtonState extends State<_ArrowButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _hovered ? Colors.white24 : Colors.white12,
+            border: Border.all(color: Colors.white24, width: 1),
+          ),
+          child: Icon(widget.icon, color: Colors.white, size: 32),
+        ),
+      ),
+    );
+  }
+}
+
+class _ThumbnailStrip extends StatefulWidget {
+  final List<String> frames;
+  final int currentIndex;
+  final void Function(int) onTap;
+  const _ThumbnailStrip({
+    required this.frames,
+    required this.currentIndex,
+    required this.onTap,
+  });
+
+  @override
+  State<_ThumbnailStrip> createState() => _ThumbnailStripState();
+}
+
+class _ThumbnailStripState extends State<_ThumbnailStrip> {
+  final _scrollController = ScrollController();
+
+  @override
+  void didUpdateWidget(_ThumbnailStrip old) {
+    super.didUpdateWidget(old);
+    if (old.currentIndex != widget.currentIndex) {
+      final target = widget.currentIndex * 82.0;
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          target.clamp(0.0, _scrollController.position.maxScrollExtent),
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [Colors.black87, Colors.transparent],
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      height: 90,
+      child: ListView.separated(
+        controller: _scrollController,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: widget.frames.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
+        itemBuilder: (_, i) {
+          final selected = i == widget.currentIndex;
+          return GestureDetector(
+            onTap: () => widget.onTap(i),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: selected ? Colors.white : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: Opacity(
+                  opacity: selected ? 1.0 : 0.5,
+                  child: CachedNetworkImage(
+                    imageUrl: widget.frames[i],
+                    width: 72,
+                    height: 40,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, _, _) => Container(
+                      width: 72,
+                      height: 40,
+                      color: AppColors.surfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

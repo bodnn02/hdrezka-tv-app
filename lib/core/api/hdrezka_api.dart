@@ -708,8 +708,10 @@ class HdRezkaApi {
     return episodes;
   }
 
-  Future<Map<int, SeriesTranslatorData>> get seriesInfo async {
-    if (_seriesInfoCache != null) return _seriesInfoCache!;
+  Future<SeriesTranslatorData?> getSeriesInfoForTranslator(int translatorId) async {
+    if (_seriesInfoCache != null && _seriesInfoCache!.containsKey(translatorId)) {
+      return _seriesInfoCache![translatorId];
+    }
 
     final contentType = await type;
     if (contentType != const TVSeries()) {
@@ -718,31 +720,48 @@ class HdRezkaApi {
 
     final contentId = await id;
     final t = await translators;
-    final result = <int, SeriesTranslatorData>{};
+    final trInfo = t[translatorId];
+    if (trInfo == null) return null;
 
-    for (final entry in t.entries) {
-      final response = await _post('$origin/ajax/get_cdn_series/', {
-        'id': contentId.toString(),
-        'translator_id': entry.key.toString(),
-        'action': 'get_episodes',
-      });
+    final response = await _post('$origin/ajax/get_cdn_series/', {
+      'id': contentId.toString(),
+      'translator_id': translatorId.toString(),
+      'action': 'get_episodes',
+    });
 
-      final decoded = json.decode(utf8.decode(response.bodyBytes));
-      final data = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
-      if (data['success'] == true) {
-        final seasons = _parseSeasons(data['seasons']?.toString() ?? '');
-        final episodes = _parseEpisodes(data['episodes']?.toString() ?? '');
-        result[entry.key] = SeriesTranslatorData(
-          translatorName: entry.value.name,
-          premium: entry.value.premium,
-          seasons: seasons,
-          episodes: episodes,
-        );
-      }
+    final decoded = json.decode(utf8.decode(response.bodyBytes));
+    final data = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    if (data['success'] != true) return null;
+
+    final result = SeriesTranslatorData(
+      translatorName: trInfo.name,
+      premium: trInfo.premium,
+      seasons: _parseSeasons(data['seasons']?.toString() ?? ''),
+      episodes: _parseEpisodes(data['episodes']?.toString() ?? ''),
+    );
+
+    _seriesInfoCache ??= {};
+    _seriesInfoCache![translatorId] = result;
+    return result;
+  }
+
+  Future<Map<int, SeriesTranslatorData>> get seriesInfo async {
+    if (_seriesInfoCache != null) return _seriesInfoCache!;
+
+    final contentType = await type;
+    if (contentType != const TVSeries()) {
+      throw StateError('seriesInfo is only available for TVSeries');
     }
 
-    _seriesInfoCache = result;
-    return result;
+    final t = await translators;
+    _seriesInfoCache = {};
+    // Load only the first (default) translator eagerly; others load on demand
+    if (t.isNotEmpty) {
+      final firstId = t.keys.first;
+      await getSeriesInfoForTranslator(firstId);
+    }
+
+    return _seriesInfoCache!;
   }
 
   Future<List<SeasonInfo>> get episodesInfo async {
@@ -754,6 +773,17 @@ class HdRezkaApi {
     }
 
     final si = await seriesInfo;
+    _episodesInfoCache = _buildSeasonList(si);
+    return _episodesInfoCache!;
+  }
+
+  Future<List<SeasonInfo>> getEpisodesInfoForTranslator(int translatorId) async {
+    final trData = await getSeriesInfoForTranslator(translatorId);
+    if (trData == null) return [];
+    return _buildSeasonList({translatorId: trData});
+  }
+
+  static List<SeasonInfo> _buildSeasonList(Map<int, SeriesTranslatorData> si) {
     final output = <SeasonInfo>[];
 
     for (final trEntry in si.entries) {
@@ -796,7 +826,6 @@ class HdRezkaApi {
       }
     }
 
-    _episodesInfoCache = output;
     return output;
   }
 

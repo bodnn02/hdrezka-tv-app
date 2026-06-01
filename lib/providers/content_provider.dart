@@ -24,6 +24,15 @@ final episodesInfoProvider = FutureProvider.family<List<SeasonInfo>, String>(
   name: 'episodesInfoProvider',
 );
 
+// Loads episodes for a specific translator only — avoids fetching all translators at once
+final episodesForTranslatorProvider = FutureProvider.family<List<SeasonInfo>, ({String url, int translatorId})>(
+  (ref, params) async {
+    final api = await ref.watch(contentProvider(params.url).future);
+    return api.getEpisodesInfoForTranslator(params.translatorId);
+  },
+  name: 'episodesForTranslatorProvider',
+);
+
 final translatorsProvider = FutureProvider.family<Map<int, TranslatorInfo>, String>(
   (ref, url) async {
     final api = await ref.watch(contentProvider(url).future);
