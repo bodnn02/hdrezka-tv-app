@@ -9,6 +9,8 @@ jobs:
   build:
     name: Build release APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -51,18 +53,15 @@ jobs:
       #     storeFile=../app/release.jks
       #     EOF
 
-      # ── Fallback: generate a CI debug keystore when no production secrets ─────
+      # ── CI debug keystore (used when production secrets are not configured) ────
       - name: Generate CI debug keystore
-        if: ${{ env.KEYSTORE_BASE64 == '' }}
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           keytool -genkeypair -noprompt \
             -keystore android/ci-debug.keystore \
             -alias androiddebugkey \
             -keyalg RSA -keysize 2048 -validity 365 \
             -storepass android -keypass android \
-            -dname "CN=CI, OU=CI, O=CI, L=CI, S=CI, C=US"
+            -dname "CN=CI, OU=CI, O=CI, L=CI, ST=CI, C=US"
 
       - name: Extract version from tag
         id: version
