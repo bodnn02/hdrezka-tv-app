@@ -11,7 +11,14 @@
       "PowerShell(New-Item -ItemType Directory -Force \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\\\\assets\\\\images\")",
       "PowerShell(Copy-Item \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\\\\hdrezka-logo.png\" \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\\\\assets\\\\images\\\\hdrezka-logo.png\")",
       "PowerShell(Copy-Item \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\\\\favicon-32x32.png\" \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\\\\assets\\\\images\\\\favicon-32x32.png\")",
-      "Bash(Get-ChildItem -Path \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\" -Directory)"
+      "Bash(Get-ChildItem -Path \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\" -Directory)",
+      "Bash(Get-ChildItem -Path \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\" -Force)",
+      "Bash(Select-Object Name, FullName)",
+      "PowerShell(Get-ChildItem -Path \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\\\\android\" -Recurse -Force | Where-Object { $_.Extension -eq '.gradle' })",
+      "Bash(New-Item -ItemType Directory -Force \"d:\\\\Programs\\\\OSPanel\\\\domains\\\\hdrezka-tv-app\\\\android\\\\app\\\\src\\\\main\\\\res\\\\xml\")",
+      "Bash(Out-Null)",
+      "Bash(flutter pub *)",
+      "Bash(flutter analyze *)"
     ]
   }
 }

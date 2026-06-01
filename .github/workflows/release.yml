@@ -1,0 +1,80 @@
+name: Build & Release APK
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  build:
+    name: Build release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.0'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      # ── Keystore (опционально, раскомментировать после настройки secrets) ──────
+      # - name: Decode keystore
+      #   run: |
+      #     echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.jks
+      #
+      # - name: Write key.properties
+      #   run: |
+      #     cat > android/key.properties <<EOF
+      #     storePassword=${{ secrets.KEY_STORE_PASSWORD }}
+      #     keyPassword=${{ secrets.KEY_PASSWORD }}
+      #     keyAlias=${{ secrets.KEY_ALIAS }}
+      #     storeFile=release.jks
+      #     EOF
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"          # e.g. v1.2.3
+          VERSION="${TAG#v}"                # e.g. 1.2.3
+          # build number = all digits joined (1.2.3 → 123)
+          BUILD=$(echo "$VERSION" | tr -d '.')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build=$BUILD"     >> "$GITHUB_OUTPUT"
+
+      - name: Build APK
+        run: |
+          flutter build apk --release \
+            --build-name="${{ steps.version.outputs.version }}" \
+            --build-number="${{ steps.version.outputs.build }}"
+
+      - name: Rename APK
+        run: |
+          mv build/app/outputs/flutter-apk/app-release.apk \
+             build/app/outputs/flutter-apk/hdrezka-tv-${{ steps.version.outputs.version }}.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "HDRezka TV ${{ steps.version.outputs.version }}"
+          body: |
+            ## Что нового
+
+            <!-- Заполнится автоматически из описания тега, или отредактируйте вручную после создания релиза -->
+          files: build/app/outputs/flutter-apk/hdrezka-tv-${{ steps.version.outputs.version }}.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

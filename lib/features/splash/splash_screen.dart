@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/auth_state.dart';
+import '../../providers/update_provider.dart';
+import '../../shared/widgets/update_dialog.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -47,9 +49,19 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   void _navigateAfterDelay(AuthState authState) {
-    Future.delayed(const Duration(milliseconds: 1800), () {
+    Future.delayed(const Duration(milliseconds: 1800), () async {
       if (!mounted) return;
       context.go('/');
+      // Проверяем обновления после перехода на главный экран
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (!mounted) return;
+      ref.read(updateCheckProvider.notifier).check().then((_) {
+        if (!mounted) return;
+        final state = ref.read(updateCheckProvider);
+        if (state is UpdateCheckAvailable) {
+          UpdateDialog.show(context, state.release);
+        }
+      });
     });
   }
 

@@ -9,7 +9,9 @@ import '../../core/services/watch_history_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/auth_state.dart';
+import '../../providers/update_provider.dart';
 import '../../shared/widgets/focusable_card.dart';
+import '../../shared/widgets/update_dialog.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -77,6 +79,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
 
                         const Spacer(),
+
+                        _UpdateButton(),
+                        const SizedBox(height: 8),
 
                         if (isAuthed)
                           _GlassActionButton(
@@ -669,6 +674,105 @@ class _BookmarkCard extends ConsumerWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Update button ──────────────────────────────────────────────────────────────
+
+class _UpdateButton extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_UpdateButton> createState() => _UpdateButtonState();
+}
+
+class _UpdateButtonState extends ConsumerState<_UpdateButton> {
+  bool _focused = false;
+
+  Future<void> _checkAndShow() async {
+    final notifier = ref.read(updateCheckProvider.notifier);
+    await notifier.check();
+    if (!mounted) return;
+    final state = ref.read(updateCheckProvider);
+    if (state is UpdateCheckAvailable) {
+      UpdateDialog.show(context, state.release);
+    } else if (state is UpdateCheckUpToDate) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('У вас уже установлена последняя версия.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } else if (state is UpdateCheckError) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка проверки обновлений: ${state.message}'),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final checkState = ref.watch(updateCheckProvider);
+    final isLoading = checkState is UpdateCheckLoading;
+
+    return Focus(
+      onFocusChange: (f) => setState(() => _focused = f),
+      onKeyEvent: (_, event) {
+        if (!isLoading &&
+            event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.select ||
+             event.logicalKey == LogicalKeyboardKey.enter)) {
+          _checkAndShow();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: GestureDetector(
+        onTap: isLoading ? null : _checkAndShow,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: _focused ? AppColors.accent.withAlpha(35) : Colors.transparent,
+                border: Border.all(
+                  color: _focused ? AppColors.glassBorderFocus : Colors.transparent,
+                  width: _focused ? 2 : 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  if (isLoading)
+                    const SizedBox(
+                      width: 19, height: 19,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.accent,
+                      ),
+                    )
+                  else
+                    const Icon(Icons.system_update_rounded, color: AppColors.accent, size: 19),
+                  const SizedBox(width: 10),
+                  Text(
+                    isLoading ? 'Проверка…' : 'Обновления',
+                    style: const TextStyle(
+                      color: AppColors.accent,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
