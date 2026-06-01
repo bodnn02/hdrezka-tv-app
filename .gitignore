@@ -47,5 +47,6 @@ app.*.map.json
 # Signing — never commit keystores or key.properties
 android/key.properties
 android/app/release.jks
+android/ci-debug.keystore
 **/*.keystore
 **/*.jks

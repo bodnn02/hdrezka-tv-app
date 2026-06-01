@@ -15,7 +15,7 @@ val hasKeystore = keyPropertiesFile.exists()
 android {
     namespace = "com.hdrezka.hdrezka_tv"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -38,9 +38,10 @@ android {
                 storeFile     = file(keyProperties.getProperty("storeFile"))
                 storePassword = keyProperties.getProperty("storePassword")
             } else {
-                // Fallback to debug keystore when key.properties is absent (CI without secrets)
-                val debugStore = file("${System.getProperty("user.home")}/.android/debug.keystore")
-                if (debugStore.exists()) storeFile = debugStore
+                // CI without production secrets: use a generated debug keystore.
+                // The keystore is created by the workflow before assembleRelease runs.
+                val ciStore = rootProject.file("ci-debug.keystore")
+                storeFile     = ciStore
                 storePassword = "android"
                 keyAlias      = "androiddebugkey"
                 keyPassword   = "android"
