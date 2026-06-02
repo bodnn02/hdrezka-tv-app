@@ -31,6 +31,17 @@ abstract final class AppColors {
   static const onSurfaceSubtle   = Color(0xFF5A5A66);
 }
 
+/// TV safe-zone margins — keeps content inside the overscan area on all TVs.
+/// Use [h] for horizontal padding and [v] for vertical padding.
+abstract final class TvSafe {
+  static const double h   = 64.0;  // left / right safe margin
+  static const double v   = 48.0;  // top / bottom safe margin
+  /// Height of the glass top-navigation bar (incl. its own vertical padding).
+  static const double navBarHeight = 72.0;
+  /// Top content offset: below the nav bar + safe margin.
+  static const double contentTop = navBarHeight + 8.0;
+}
+
 abstract final class LiquidGlass {
   // Blur radius for glass surfaces
   static const double blurLight  = 12.0;

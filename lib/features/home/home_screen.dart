@@ -46,6 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
           policy: ReadingOrderTraversalPolicy(),
           child: SingleChildScrollView(
             controller: _scrollController,
+            padding: const EdgeInsets.only(top: TvSafe.navBarHeight),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

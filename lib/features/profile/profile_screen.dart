@@ -25,6 +25,16 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   int _tab = 0; // 0=history 1=bookmarks 2=settings
 
+  // Track whether the first sidebar tab is focused so arrowUp goes to top bar
+  // only from that position, not from anywhere in the screen.
+  final _historyTabFocus = FocusNode();
+
+  @override
+  void dispose() {
+    _historyTabFocus.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAuthed  = ref.watch(authProvider) is AuthAuthenticated;
@@ -34,9 +44,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Focus(
-        onKeyEvent: (_, event) {
+        onKeyEvent: (node, event) {
           if (event is KeyDownEvent &&
               event.logicalKey == LogicalKeyboardKey.arrowUp) {
+            // Only jump to top bar when the very first sidebar item is focused
+            if (_historyTabFocus.hasFocus) {
+              AppShell.focusTopBar(context);
+              return KeyEventResult.handled;
+            }
+          }
+          if (event is KeyDownEvent &&
+              (event.logicalKey == LogicalKeyboardKey.goBack ||
+               event.logicalKey == LogicalKeyboardKey.escape ||
+               event.logicalKey == LogicalKeyboardKey.browserBack)) {
             AppShell.focusTopBar(context);
             return KeyEventResult.handled;
           }
@@ -78,6 +98,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           label: 'История',
                           count: history.length,
                           selected: _tab == 0,
+                          focusNode: _historyTabFocus,
+                          autofocus: true,
                           onSelect: () => setState(() => _tab = 0),
                         ),
                         const SizedBox(height: 8),
@@ -197,10 +219,13 @@ class _GlassTab extends StatefulWidget {
   final int count;
   final bool selected;
   final VoidCallback onSelect;
+  final FocusNode? focusNode;
+  final bool autofocus;
 
   const _GlassTab({
     required this.icon, required this.label, required this.count,
     required this.selected, required this.onSelect,
+    this.focusNode, this.autofocus = false,
   });
 
   @override
@@ -215,6 +240,8 @@ class _GlassTabState extends State<_GlassTab> {
     final active = widget.selected || _focused;
 
     return Focus(
+      focusNode: widget.focusNode,
+      autofocus: widget.autofocus,
       onFocusChange: (f) => setState(() => _focused = f),
       onKeyEvent: (_, event) {
         if (event is KeyDownEvent &&

@@ -143,8 +143,24 @@ class _DetailsContent extends ConsumerWidget {
         ),
 
         // Scrollable content
-        SingleChildScrollView(
-          padding: const EdgeInsets.only(top: 60, left: 60, right: 60, bottom: 64),
+        Focus(
+          onKeyEvent: (_, event) {
+            if (event is KeyDownEvent &&
+                (event.logicalKey == LogicalKeyboardKey.goBack ||
+                 event.logicalKey == LogicalKeyboardKey.escape ||
+                 event.logicalKey == LogicalKeyboardKey.browserBack)) {
+              Navigator.of(context).maybePop();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          },
+          child: SingleChildScrollView(
+          padding: const EdgeInsets.only(
+            top: TvSafe.contentTop,
+            left: TvSafe.h,
+            right: TvSafe.h,
+            bottom: TvSafe.v,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -468,7 +484,8 @@ class _DetailsContent extends ConsumerWidget {
               ),
             ],
           ),
-        ),
+        ),      // SingleChildScrollView
+        ),      // Focus
       ],
     );
   }

@@ -786,7 +786,19 @@ class _FilterPanelState extends State<_FilterPanel> with SingleTickerProviderSta
       color: Colors.transparent,
       child: FadeTransition(
         opacity: _fade,
-        child: GestureDetector(
+        child: Focus(
+          autofocus: true,
+          onKeyEvent: (_, event) {
+            if (event is KeyDownEvent &&
+                (event.logicalKey == LogicalKeyboardKey.goBack ||
+                 event.logicalKey == LogicalKeyboardKey.escape ||
+                 event.logicalKey == LogicalKeyboardKey.browserBack)) {
+              _close();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          },
+          child: GestureDetector(
           onTap: _close,
           child: Container(
             color: Colors.black54,
@@ -803,6 +815,8 @@ class _FilterPanelState extends State<_FilterPanel> with SingleTickerProviderSta
                     borderRadius: const BorderRadius.horizontal(left: Radius.circular(24)),
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+                      child: FocusTraversalGroup(
+                        policy: ReadingOrderTraversalPolicy(),
                       child: Container(
                         width: 380,
                         height: double.infinity,
@@ -917,7 +931,7 @@ class _FilterPanelState extends State<_FilterPanel> with SingleTickerProviderSta
                             ],
                           ),
                         ),
-                      ),
+                      ),          // FocusTraversalGroup
                     ),
                   ),
                 ),
@@ -925,6 +939,8 @@ class _FilterPanelState extends State<_FilterPanel> with SingleTickerProviderSta
             ),
           ),
         ),
+        ),         // GestureDetector (backdrop)
+        ),         // Focus (key handler)
       ),
     );
   }

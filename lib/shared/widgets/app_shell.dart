@@ -147,7 +147,7 @@ class _GlassTopBar extends StatelessWidget {
                 ),
 
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
+                  padding: const EdgeInsets.fromLTRB(TvSafe.h, TvSafe.v - 24, TvSafe.h, 14),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [

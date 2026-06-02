@@ -101,16 +101,25 @@ class _PlayerControlsState extends State<PlayerControls> {
       onKeyEvent: (_, event) {
         if (event is KeyDownEvent) {
           _showControls();
-          if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+          if (event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+              event.logicalKey == LogicalKeyboardKey.mediaRewind) {
             _seek(const Duration(seconds: -10));
             return KeyEventResult.handled;
           }
-          if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+          if (event.logicalKey == LogicalKeyboardKey.arrowRight ||
+              event.logicalKey == LogicalKeyboardKey.mediaFastForward) {
             _seek(const Duration(seconds: 10));
             return KeyEventResult.handled;
           }
+          if (event.logicalKey == LogicalKeyboardKey.select ||
+              event.logicalKey == LogicalKeyboardKey.enter ||
+              event.logicalKey == LogicalKeyboardKey.mediaPlayPause) {
+            widget.player.playOrPause();
+            return KeyEventResult.handled;
+          }
           if (event.logicalKey == LogicalKeyboardKey.goBack ||
-              event.logicalKey == LogicalKeyboardKey.escape) {
+              event.logicalKey == LogicalKeyboardKey.escape ||
+              event.logicalKey == LogicalKeyboardKey.browserBack) {
             widget.onClose();
             return KeyEventResult.handled;
           }
@@ -145,7 +154,7 @@ class _PlayerControlsState extends State<PlayerControls> {
 
               // Top bar: back button + title
               Positioned(
-                top: 24, left: 24, right: 24,
+                top: TvSafe.v, left: TvSafe.h, right: TvSafe.h,
                 child: Row(
                   children: [
                     FocusableCard(
@@ -186,7 +195,7 @@ class _PlayerControlsState extends State<PlayerControls> {
               // Quality picker overlay
               if (_showQualityPicker)
                 Positioned(
-                  top: 80, right: 24,
+                  top: TvSafe.v + 60, right: TvSafe.h,
                   child: _QualityPicker(
                     resolutions: widget.stream.sortedResolutions,
                     selected: _selectedQuality,
@@ -196,7 +205,7 @@ class _PlayerControlsState extends State<PlayerControls> {
 
               // Bottom controls
               Positioned(
-                bottom: 24, left: 40, right: 40,
+                bottom: TvSafe.v, left: TvSafe.h, right: TvSafe.h,
                 child: Column(
                   children: [
                     // Progress bar
