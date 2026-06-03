@@ -42,14 +42,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     super.initState();
     _player = Player();
     _videoController = VideoController(_player);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    // Hide system bars only during playback; restored in dispose.
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: [],
+    );
   }
 
   @override
   void dispose() {
     _saveProgress();
+    _player.stop();
     _player.dispose();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    );
     super.dispose();
   }
 

@@ -4,20 +4,17 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 
-// ── Public API ─────────────────────────────────────────────────────────────────
-
-/// Shell that wraps every ShellRoute screen.
+/// Shell wrapping every ShellRoute screen.
 ///
-/// Layout: true Column — nav bar (fixed height) on top, content fills the rest.
-/// Two explicit [FocusScopeNode]s:
-///   • [_navScope]     — owns all nav-bar items
-///   • [_contentScope] — owns the current screen
+/// Focus model:
+///   • Nav-bar items live in [_navBarFocus] (a FocusNode, not a FocusScopeNode).
+///   • Content lives below in the same scope — Flutter's default traversal
+///     order (top-to-bottom, reading-order) handles left/right/up/down inside.
+///   • ArrowDown on the last focused nav item → move to content (_contentKey).
+///   • ArrowUp from content at scroll-top → move back to nav bar.
+///   • Back/Escape in content → move back to nav bar.
 ///
-/// Boundary rules (handled here, screens need no arrowUp logic):
-///   • Arrow-Down from nav bar  → content scope gets focus (first focusable)
-///   • Arrow-Up   in content    → intercepted only when content is at scroll top
-///                                → nav bar scope gets focus
-///   • Back/Escape in content   → nav bar scope gets focus
+/// Screens call [AppShell.focusNavBar] to hand focus up.
 class AppShell extends StatefulWidget {
   final Widget child;
   const AppShell({super.key, required this.child});
@@ -29,12 +26,12 @@ class AppShell extends StatefulWidget {
   static const _catRoutes = ['/films', '/series', '/cartoons', '/anime'];
   static const _catLabels = ['Фильмы', 'Сериалы', 'Мультфильмы', 'Аниме'];
 
-  /// Called by content to hand focus back to the nav bar.
+  /// Move focus to the nav bar from any descendant.
   static void focusNavBar(BuildContext context) {
     context.findAncestorStateOfType<_AppShellState>()?._focusNavBar();
   }
 
-  /// Called by nav bar to hand focus down to content.
+  /// Move focus to the content area from any descendant.
   static void focusContent(BuildContext context) {
     context.findAncestorStateOfType<_AppShellState>()?._focusContent();
   }
@@ -44,28 +41,31 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  final _navScope     = FocusScopeNode(debugLabel: 'NavBar');
-  final _contentScope = FocusScopeNode(debugLabel: 'Content');
+  // Focus node for the entire nav bar row — requesting it focuses the bar.
+  final _navBarFocus = FocusScopeNode(debugLabel: 'nav-bar');
+  // Key on the content subtree so we can find its first focusable child.
+  final _contentKey  = GlobalKey();
 
   @override
   void dispose() {
-    _navScope.dispose();
-    _contentScope.dispose();
+    _navBarFocus.dispose();
     super.dispose();
   }
 
   void _focusNavBar() {
-    // Move focus into the nav bar; it restores its last focused child.
-    if (!_navScope.hasFocus) {
-      FocusScope.of(context).setFirstFocus(_navScope);
+    if (!_navBarFocus.hasFocus) {
+      _navBarFocus.requestFocus();
     }
   }
 
   void _focusContent() {
-    // Move focus into the content area; it restores its last focused child
-    // or falls through to the first autofocus descendant.
-    if (!_contentScope.hasFocus) {
-      FocusScope.of(context).setFirstFocus(_contentScope);
+    final ctx = _contentKey.currentContext;
+    if (ctx == null) return;
+    final scope = FocusScope.of(ctx);
+    // Restore the last focused child, or move to the scope itself so Flutter
+    // falls through to the first autofocus descendant.
+    if (!scope.hasFocus) {
+      scope.requestFocus();
     }
   }
 
@@ -86,48 +86,45 @@ class _AppShellState extends State<AppShell> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // ── Nav bar (fixed height, always on top) ──────────────────────
+          // ── Nav bar ────────────────────────────────────────────────────
           FocusScope(
-            node: _navScope,
+            node: _navBarFocus,
+            // Intercept ArrowDown at the scope level so it always reaches
+            // content regardless of which nav item currently has focus.
+            onKeyEvent: (_, event) {
+              if (event is KeyDownEvent &&
+                  event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                _focusContent();
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: _GlassTopBar(
+              selectedRoute: selected,
+              mainRoutes: AppShell._mainRoutes,
+              mainIcons:  AppShell._mainIcons,
+              mainLabels: AppShell._mainLabels,
+              catRoutes:  AppShell._catRoutes,
+              catLabels:  AppShell._catLabels,
+            ),
+          ),
+
+          // ── Content ────────────────────────────────────────────────────
+          Expanded(
             child: Focus(
-              skipTraversal: true,
+              // Intercept Back/Escape bubbling up from content.
               onKeyEvent: (_, event) {
-                // Arrow-Down: hand focus to content
                 if (event is KeyDownEvent &&
-                    event.logicalKey == LogicalKeyboardKey.arrowDown) {
-                  _focusContent();
+                    (event.logicalKey == LogicalKeyboardKey.goBack ||
+                     event.logicalKey == LogicalKeyboardKey.escape ||
+                     event.logicalKey == LogicalKeyboardKey.browserBack)) {
+                  _focusNavBar();
                   return KeyEventResult.handled;
                 }
                 return KeyEventResult.ignored;
               },
-              child: _GlassTopBar(
-                selectedRoute: selected,
-                mainRoutes: AppShell._mainRoutes,
-                mainIcons:  AppShell._mainIcons,
-                mainLabels: AppShell._mainLabels,
-                catRoutes:  AppShell._catRoutes,
-                catLabels:  AppShell._catLabels,
-              ),
-            ),
-          ),
-
-          // ── Content area ───────────────────────────────────────────────
-          Expanded(
-            child: FocusScope(
-              node: _contentScope,
-              child: Focus(
-                skipTraversal: true,
-                onKeyEvent: (_, event) {
-                  // Back/Escape always returns to nav bar
-                  if (event is KeyDownEvent &&
-                      (event.logicalKey == LogicalKeyboardKey.goBack ||
-                       event.logicalKey == LogicalKeyboardKey.escape ||
-                       event.logicalKey == LogicalKeyboardKey.browserBack)) {
-                    _focusNavBar();
-                    return KeyEventResult.handled;
-                  }
-                  return KeyEventResult.ignored;
-                },
+              child: KeyedSubtree(
+                key: _contentKey,
                 child: widget.child,
               ),
             ),

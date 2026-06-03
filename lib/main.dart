@@ -14,8 +14,6 @@ void main() async {
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
-  // Full-screen immersive: hide system bars so content fills the entire panel
-  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   runApp(
     const ProviderScope(
       child: HdRezkaTvApp(),

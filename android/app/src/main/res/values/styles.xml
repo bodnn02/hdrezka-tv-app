@@ -1,9 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Launch splash theme: no title bar, black background -->
     <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">@drawable/launch_background</item>
     </style>
+
+    <!--
+        NormalTheme is applied after the splash.
+        android:windowOverscan="true"  → tells Android TV to apply the platform
+        overscan compensation (the ~5% inset) so the app never bleeds past the
+        physical safe zone on any TV.  Flutter's immersiveSticky mode does NOT
+        do this on its own; the Window attribute is the correct fix.
+    -->
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">#000000</item>
+        <item name="android:windowOverscan">true</item>
     </style>
 </resources>
