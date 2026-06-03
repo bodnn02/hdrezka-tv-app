@@ -128,8 +128,8 @@ class _HeroBannerState extends ConsumerState<HeroBanner> {
 
                 // Dot indicators + nav arrows (bottom-right)
                 Positioned(
-                  bottom: 24,
-                  right: 48,
+                  bottom: TvSafe.v,
+                  right: TvSafe.h,
                   child: _SlideControls(
                     count: items.length,
                     current: index,

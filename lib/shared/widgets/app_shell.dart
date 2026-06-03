@@ -4,8 +4,20 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 
-/// Allows child screens to request focus on the top navigation bar.
-/// Call `AppShell.focusTopBar(context)` from any descendant.
+// ── Public API ─────────────────────────────────────────────────────────────────
+
+/// Shell that wraps every ShellRoute screen.
+///
+/// Layout: true Column — nav bar (fixed height) on top, content fills the rest.
+/// Two explicit [FocusScopeNode]s:
+///   • [_navScope]     — owns all nav-bar items
+///   • [_contentScope] — owns the current screen
+///
+/// Boundary rules (handled here, screens need no arrowUp logic):
+///   • Arrow-Down from nav bar  → content scope gets focus (first focusable)
+///   • Arrow-Up   in content    → intercepted only when content is at scroll top
+///                                → nav bar scope gets focus
+///   • Back/Escape in content   → nav bar scope gets focus
 class AppShell extends StatefulWidget {
   final Widget child;
   const AppShell({super.key, required this.child});
@@ -17,9 +29,14 @@ class AppShell extends StatefulWidget {
   static const _catRoutes = ['/films', '/series', '/cartoons', '/anime'];
   static const _catLabels = ['Фильмы', 'Сериалы', 'Мультфильмы', 'Аниме'];
 
-  static void focusTopBar(BuildContext context) {
-    final state = context.findAncestorStateOfType<_AppShellState>();
-    state?._topBarScope.requestFocus();
+  /// Called by content to hand focus back to the nav bar.
+  static void focusNavBar(BuildContext context) {
+    context.findAncestorStateOfType<_AppShellState>()?._focusNavBar();
+  }
+
+  /// Called by nav bar to hand focus down to content.
+  static void focusContent(BuildContext context) {
+    context.findAncestorStateOfType<_AppShellState>()?._focusContent();
   }
 
   @override
@@ -27,12 +44,29 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  final _topBarScope = FocusScopeNode();
+  final _navScope     = FocusScopeNode(debugLabel: 'NavBar');
+  final _contentScope = FocusScopeNode(debugLabel: 'Content');
 
   @override
   void dispose() {
-    _topBarScope.dispose();
+    _navScope.dispose();
+    _contentScope.dispose();
     super.dispose();
+  }
+
+  void _focusNavBar() {
+    // Move focus into the nav bar; it restores its last focused child.
+    if (!_navScope.hasFocus) {
+      FocusScope.of(context).setFirstFocus(_navScope);
+    }
+  }
+
+  void _focusContent() {
+    // Move focus into the content area; it restores its last focused child
+    // or falls through to the first autofocus descendant.
+    if (!_contentScope.hasFocus) {
+      FocusScope.of(context).setFirstFocus(_contentScope);
+    }
   }
 
   String _selectedRoute(String location) {
@@ -50,24 +84,51 @@ class _AppShellState extends State<AppShell> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Stack(
+      body: Column(
         children: [
-          Positioned.fill(child: widget.child),
-          Positioned(
-            top: 0, left: 0, right: 0,
-            child: FocusScope(
-              node: _topBarScope,
+          // ── Nav bar (fixed height, always on top) ──────────────────────
+          FocusScope(
+            node: _navScope,
+            child: Focus(
+              skipTraversal: true,
+              onKeyEvent: (_, event) {
+                // Arrow-Down: hand focus to content
+                if (event is KeyDownEvent &&
+                    event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                  _focusContent();
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
+              },
               child: _GlassTopBar(
                 selectedRoute: selected,
                 mainRoutes: AppShell._mainRoutes,
-                mainIcons: AppShell._mainIcons,
+                mainIcons:  AppShell._mainIcons,
                 mainLabels: AppShell._mainLabels,
-                catRoutes: AppShell._catRoutes,
-                catLabels: AppShell._catLabels,
-                onEscapeDown: () {
-                  // Return focus to content area
-                  _topBarScope.unfocus();
+                catRoutes:  AppShell._catRoutes,
+                catLabels:  AppShell._catLabels,
+              ),
+            ),
+          ),
+
+          // ── Content area ───────────────────────────────────────────────
+          Expanded(
+            child: FocusScope(
+              node: _contentScope,
+              child: Focus(
+                skipTraversal: true,
+                onKeyEvent: (_, event) {
+                  // Back/Escape always returns to nav bar
+                  if (event is KeyDownEvent &&
+                      (event.logicalKey == LogicalKeyboardKey.goBack ||
+                       event.logicalKey == LogicalKeyboardKey.escape ||
+                       event.logicalKey == LogicalKeyboardKey.browserBack)) {
+                    _focusNavBar();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
                 },
+                child: widget.child,
               ),
             ),
           ),
@@ -86,7 +147,6 @@ class _GlassTopBar extends StatelessWidget {
   final List<String> mainLabels;
   final List<String> catRoutes;
   final List<String> catLabels;
-  final VoidCallback? onEscapeDown;
 
   const _GlassTopBar({
     required this.selectedRoute,
@@ -95,38 +155,29 @@ class _GlassTopBar extends StatelessWidget {
     required this.mainLabels,
     required this.catRoutes,
     required this.catLabels,
-    this.onEscapeDown,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0x60000000), Color(0x28000000)],
+    return SizedBox(
+      height: TvSafe.navBarHeight,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0x60000000), Color(0x28000000)],
+              ),
+              border: Border(
+                bottom: BorderSide(color: AppColors.glassBorder, width: 0.5),
+              ),
             ),
-            border: Border(
-              bottom: BorderSide(color: AppColors.glassBorder, width: 0.5),
-            ),
-          ),
-          child: Focus(
-            skipTraversal: true,
-            onKeyEvent: (_, event) {
-              if (event is KeyDownEvent &&
-                  event.logicalKey == LogicalKeyboardKey.arrowDown) {
-                onEscapeDown?.call();
-                return KeyEventResult.handled;
-              }
-              return KeyEventResult.ignored;
-            },
             child: Stack(
               children: [
-                // Top iridescent rim
+                // Iridescent top rim
                 Positioned(
                   top: 0, left: 0, right: 0,
                   child: Container(
@@ -147,14 +198,13 @@ class _GlassTopBar extends StatelessWidget {
                 ),
 
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(TvSafe.h, TvSafe.v - 24, TvSafe.h, 14),
+                  padding: const EdgeInsets.fromLTRB(TvSafe.h, TvSafe.v - 20, TvSafe.h, 12),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       _LogoButton(),
                       const SizedBox(width: 44),
 
-                      // Main nav items
                       for (var i = 0; i < mainRoutes.length; i++)
                         _NavItem(
                           icon: mainIcons[i],
@@ -163,15 +213,12 @@ class _GlassTopBar extends StatelessWidget {
                           onSelect: () => context.go(mainRoutes[i]),
                         ),
 
-                      // Separator
                       Container(
-                        width: 1,
-                        height: 20,
+                        width: 1, height: 20,
                         margin: const EdgeInsets.symmetric(horizontal: 16),
                         color: AppColors.glassBorder,
                       ),
 
-                      // Category nav items
                       for (var i = 0; i < catRoutes.length; i++)
                         _NavItem(
                           label: catLabels[i],
@@ -185,11 +232,11 @@ class _GlassTopBar extends StatelessWidget {
                   ),
                 ),
               ],
-            ),   // Stack
-          ),     // Focus
-        ),       // Container
-      ),         // BackdropFilter
-    );           // ClipRect
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -320,11 +367,9 @@ class _NavItemState extends State<_NavItem> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (widget.icon != null) ...[
-                Icon(
-                  widget.icon,
-                  color: active ? Colors.white : AppColors.onSurfaceMuted,
-                  size: 18,
-                ),
+                Icon(widget.icon,
+                    color: active ? Colors.white : AppColors.onSurfaceMuted,
+                    size: 18),
                 const SizedBox(width: 7),
               ],
               Text(
@@ -418,7 +463,9 @@ class _AuthItemState extends State<_AuthItem> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.person_rounded, color: active ? Colors.white : AppColors.onSurfaceMuted, size: 17),
+              Icon(Icons.person_rounded,
+                  color: active ? Colors.white : AppColors.onSurfaceMuted,
+                  size: 17),
               const SizedBox(width: 7),
               Text(
                 'Профиль',

@@ -37,7 +37,7 @@ abstract final class TvSafe {
   static const double h   = 64.0;  // left / right safe margin
   static const double v   = 48.0;  // top / bottom safe margin
   /// Height of the glass top-navigation bar (incl. its own vertical padding).
-  static const double navBarHeight = 72.0;
+  static const double navBarHeight = 80.0;
   /// Top content offset: below the nav bar + safe margin.
   static const double contentTop = navBarHeight + 8.0;
 }

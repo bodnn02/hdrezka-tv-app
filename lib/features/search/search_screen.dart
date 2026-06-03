@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/hdrezka_search.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/search_provider.dart';
-import '../../shared/widgets/app_shell.dart';
 import 'widgets/search_result_card.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -22,16 +20,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Timer? _debounce;
   String _query = '';
   int _selectedIndex = 0;
-
-  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent &&
-        event.logicalKey == LogicalKeyboardKey.arrowUp &&
-        !_fieldFocus.hasFocus) {
-      AppShell.focusTopBar(context);
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
-  }
 
   @override
   void dispose() {
@@ -54,9 +42,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Focus(
-        onKeyEvent: _handleKey,
-        child: Stack(
+      body: Stack(
         children: [
           // Soft radial glow in background
           Positioned.fill(
@@ -72,7 +58,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ),
 
           Padding(
-            padding: const EdgeInsets.only(top: 80, left: 48, right: 48, bottom: 24),
+            padding: const EdgeInsets.fromLTRB(TvSafe.h, 8, TvSafe.h, TvSafe.v),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -180,8 +166,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
           ),
         ],
-        ),  // Stack
-      ),    // Focus
+      ),    // Stack
     );
   }
 }

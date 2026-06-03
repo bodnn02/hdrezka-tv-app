@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../shared/widgets/app_shell.dart';
 import '../../core/services/bookmarks_service.dart';
 import '../../core/services/watch_history_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -25,16 +24,6 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   int _tab = 0; // 0=history 1=bookmarks 2=settings
 
-  // Track whether the first sidebar tab is focused so arrowUp goes to top bar
-  // only from that position, not from anywhere in the screen.
-  final _historyTabFocus = FocusNode();
-
-  @override
-  void dispose() {
-    _historyTabFocus.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final isAuthed  = ref.watch(authProvider) is AuthAuthenticated;
@@ -43,27 +32,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Focus(
-        onKeyEvent: (node, event) {
-          if (event is KeyDownEvent &&
-              event.logicalKey == LogicalKeyboardKey.arrowUp) {
-            // Only jump to top bar when the very first sidebar item is focused
-            if (_historyTabFocus.hasFocus) {
-              AppShell.focusTopBar(context);
-              return KeyEventResult.handled;
-            }
-          }
-          if (event is KeyDownEvent &&
-              (event.logicalKey == LogicalKeyboardKey.goBack ||
-               event.logicalKey == LogicalKeyboardKey.escape ||
-               event.logicalKey == LogicalKeyboardKey.browserBack)) {
-            AppShell.focusTopBar(context);
-            return KeyEventResult.handled;
-          }
-          return KeyEventResult.ignored;
-        },
-        child: Padding(
-        padding: const EdgeInsets.only(top: 80),
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(TvSafe.h, 8, TvSafe.h, TvSafe.v),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -98,7 +68,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           label: 'История',
                           count: history.length,
                           selected: _tab == 0,
-                          focusNode: _historyTabFocus,
                           autofocus: true,
                           onSelect: () => setState(() => _tab = 0),
                         ),
@@ -154,8 +123,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ],
         ),
-        ),   // Padding
-      ),     // Focus
+      ),   // Padding
     );
   }
 }
@@ -219,13 +187,12 @@ class _GlassTab extends StatefulWidget {
   final int count;
   final bool selected;
   final VoidCallback onSelect;
-  final FocusNode? focusNode;
   final bool autofocus;
 
   const _GlassTab({
     required this.icon, required this.label, required this.count,
     required this.selected, required this.onSelect,
-    this.focusNode, this.autofocus = false,
+    this.autofocus = false,
   });
 
   @override
@@ -240,7 +207,6 @@ class _GlassTabState extends State<_GlassTab> {
     final active = widget.selected || _focused;
 
     return Focus(
-      focusNode: widget.focusNode,
       autofocus: widget.autofocus,
       onFocusChange: (f) => setState(() => _focused = f),
       onKeyEvent: (_, event) {
@@ -402,7 +368,7 @@ class _HistoryTab extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(32, 28, 32, 4),
+          padding: const EdgeInsets.fromLTRB(0, 28, 0, 4),
           child: Row(
             children: [
               Text('История просмотра', style: Theme.of(context).textTheme.headlineSmall),
@@ -428,7 +394,7 @@ class _HistoryTab extends ConsumerWidget {
         ),
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
             itemCount: history.length,
             itemBuilder: (ctx, i) => _HistoryItem(entry: history[i]),
           ),
@@ -569,7 +535,7 @@ class _BookmarksTab extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(32, 28, 32, 4),
+          padding: const EdgeInsets.fromLTRB(0, 28, 0, 4),
           child: Row(
             children: [
               Text('Закладки', style: Theme.of(context).textTheme.headlineSmall),
@@ -595,7 +561,7 @@ class _BookmarksTab extends ConsumerWidget {
         ),
         Expanded(
           child: GridView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 4,
               childAspectRatio: 160 / 240,
@@ -811,7 +777,7 @@ class _SettingsTabState extends ConsumerState<_SettingsTab> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(32, 28, 32, 48),
+      padding: const EdgeInsets.fromLTRB(0, 28, 0, TvSafe.v),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

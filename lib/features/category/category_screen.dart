@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/hdrezka_browse.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/catalog_provider.dart';
-import '../../shared/widgets/app_shell.dart';
 import '../../shared/widgets/loading_shimmer.dart';
 import '../../shared/widgets/poster_card.dart';
 
@@ -84,17 +83,6 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
   FocusNode _cardFocus(int index) =>
       _cardFocusNodes.putIfAbsent(index, () => FocusNode());
 
-  KeyEventResult _handleGridKey(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent &&
-        event.logicalKey == LogicalKeyboardKey.arrowUp &&
-        _scrollController.hasClients &&
-        _scrollController.offset <= 0) {
-      AppShell.focusTopBar(context);
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
-  }
-
   void _removeFilterOverlay() {
     _filterOverlay?.remove();
     _filterOverlay = null;
@@ -159,14 +147,12 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Focus(
-        onKeyEvent: _handleGridKey,
-        child: FocusTraversalGroup(
-          policy: ReadingOrderTraversalPolicy(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 80),
+      body: FocusTraversalGroup(
+        policy: ReadingOrderTraversalPolicy(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+              const SizedBox(height: 8),
 
               // ── Header row ───────────────────────────────────────────────
               Padding(
@@ -250,7 +236,6 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
               // ── Content grid ─────────────────────────────────────────────
               Expanded(child: _buildContent(state, notifier)),
             ],
-          ),
         ),
       ),
     );
